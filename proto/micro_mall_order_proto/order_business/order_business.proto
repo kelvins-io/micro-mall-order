@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package order_business;
+
+import "gitee.com/kelvins-io/common/proto/google/api/annotations.proto";
+
+
+// 订单服务
+service OrderBusinessService {
+    // 创建订单
+    rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse) {
+        option (google.api.http) = {
+            post: "/v1/order/create"
+            body:"*"
+        };
+    }
+
+}
+enum RetCode {
+    SUCCESS = 0;
+    ERROR = 500;
+    USER_NOT_EXIST = 50001;
+    USER_EXIST = 50002;
+    MERCHANT_NOT_EXIST = 50003;
+    MERCHANT_EXIST = 50004;
+    SHOP_NOT_EXIST = 50005;
+    SHOP_EXIST = 50006;
+    SKU_NOT_EXIST = 50007;
+    SKU_EXIST = 50008;
+}
+
+enum OperationType {
+    CREATE = 0;
+    UPDATE = 1;
+    DELETE = 2;
+    AUDIT = 3;
+    PUT_AWAY = 4;
+}
+
+message CommonResponse {
+    RetCode code = 1;
+    string msg = 2;
+}
+
+message CreateOrderRequest {
+    int64 uid = 1;
+    string sku_code = 3;
+    int64 shop_id = 4;
+    string price = 5;
+    int64 amount = 6;
+    string time = 7;
+    string name = 8;
+    string payer_client_ip = 9; // 用户终端IP
+    string device_id = 10; // 用户设备号
+    string description = 11;
+
+    OrderSceneInfo scene_info = 199; // 场景
+}
+
+// 支付场景信息
+message OrderSceneInfo {
+    string payer_client_ip = 1; // 用户终端IP
+    string device_id =2; // 用户设备号
+    StoreInfo store_info = 999;
+}
+
+// 门店信息
+message StoreInfo {
+    string id = 1; // 门店编号
+    string name = 2; // 门店名称
+    string area_code = 3; // 地区编码
+    string address = 4; // 详细地址
+}
+
+message CreateOrderResponse {
+    string order_code = 1; // 订单号
+    string time_expire = 2; // 订单有效时间
+}
