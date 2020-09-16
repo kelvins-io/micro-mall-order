@@ -40,6 +40,25 @@
     }
   },
   "definitions": {
+    "order_businessCoinType": {
+      "type": "string",
+      "enum": [
+        "CNY",
+        "USD"
+      ],
+      "default": "CNY"
+    },
+    "order_businessCommonResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/order_businessRetCode"
+        },
+        "msg": {
+          "type": "string"
+        }
+      }
+    },
     "order_businessCreateOrderRequest": {
       "type": "object",
       "properties": {
@@ -47,24 +66,10 @@
           "type": "string",
           "format": "int64"
         },
-        "sku_code": {
-          "type": "string"
-        },
-        "shop_id": {
-          "type": "string",
-          "format": "int64"
-        },
-        "price": {
-          "type": "string"
-        },
-        "amount": {
-          "type": "string",
-          "format": "int64"
-        },
         "time": {
           "type": "string"
         },
-        "name": {
+        "description": {
           "type": "string"
         },
         "payer_client_ip": {
@@ -73,15 +78,38 @@
         "device_id": {
           "type": "string"
         },
-        "description": {
-          "type": "string"
+        "detail": {
+          "$ref": "#/definitions/order_businessOrderDetail"
+        }
+      },
+      "title": "一个店铺的商品算一个订单，如果同时包含多个店铺则有多个订单"
+    },
+    "order_businessCreateOrderResponse": {
+      "type": "object",
+      "properties": {
+        "common": {
+          "$ref": "#/definitions/order_businessCommonResponse"
         },
-        "scene_info": {
-          "$ref": "#/definitions/order_businessOrderSceneInfo"
+        "order_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order_businessOrderEntry"
+          }
         }
       }
     },
-    "order_businessCreateOrderResponse": {
+    "order_businessOrderDetail": {
+      "type": "object",
+      "properties": {
+        "shop_detail": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order_businessOrderShopDetail"
+          }
+        }
+      }
+    },
+    "order_businessOrderEntry": {
       "type": "object",
       "properties": {
         "order_code": {
@@ -92,26 +120,77 @@
         }
       }
     },
+    "order_businessOrderGoods": {
+      "type": "object",
+      "properties": {
+        "sku_code": {
+          "type": "string"
+        },
+        "price": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "order_businessOrderSceneInfo": {
       "type": "object",
       "properties": {
-        "payer_client_ip": {
-          "type": "string"
-        },
-        "device_id": {
-          "type": "string"
-        },
         "store_info": {
           "$ref": "#/definitions/order_businessStoreInfo"
         }
       },
       "title": "支付场景信息"
     },
+    "order_businessOrderShopDetail": {
+      "type": "object",
+      "properties": {
+        "shop_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "coin_type": {
+          "$ref": "#/definitions/order_businessCoinType"
+        },
+        "goods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order_businessOrderGoods"
+          }
+        },
+        "scene_info": {
+          "$ref": "#/definitions/order_businessOrderSceneInfo"
+        }
+      },
+      "title": "同一个门店的商品"
+    },
+    "order_businessRetCode": {
+      "type": "string",
+      "enum": [
+        "SUCCESS",
+        "ERROR",
+        "USER_NOT_EXIST",
+        "USER_EXIST",
+        "MERCHANT_NOT_EXIST",
+        "MERCHANT_EXIST",
+        "SHOP_NOT_EXIST",
+        "SHOP_EXIST",
+        "SKU_NOT_EXIST",
+        "SKU_EXIST"
+      ],
+      "default": "SUCCESS"
+    },
     "order_businessStoreInfo": {
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "format": "int64"
         },
         "name": {
           "type": "string"

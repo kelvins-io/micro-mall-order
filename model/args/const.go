@@ -1,40 +1,58 @@
 package args
 
-type SkuInventoryInfo struct {
-	SkuCode       string `json:"sku_code"`
-	Name          string `json:"name"`
-	Price         string `json:"price"`
-	Title         string `json:"title"`
-	SubTitle      string `json:"sub_title"`
-	Desc          string `json:"desc"`
-	Production    string `json:"production"`
-	Supplier      string `json:"supplier"`
-	Category      int32  `json:"category"`
-	Color         string `json:"color"`
-	ColorCode     int32  `json:"color_code"`
-	Specification string `json:"specification"`
-	DescLink      string `json:"desc_link"`
-	State         int32  `json:"state"`
-	// 其他属性...
-
-	Amount int64 `json:"amount"`
-	ShopId int64 `json:"shop_id"`
+type CreateOrderRsp struct {
+	OrderEntryList []OrderEntry
 }
 
-type SkuPropertyEx struct {
-	OpUid             int64  `bson:"op_uid"`
-	OpIp              string `bson:"op_ip"`
-	ShopId            int64  `bson:"shop_id"`
-	SkuCode           string `bson:"sku_code"`
-	Name              string `bson:"name"`
-	Size              string `bson:"size"`
-	Shape             string `bson:"shape"`
-	ProductionCountry string `bson:"production_country"`
-	ProductionDate    string `bson:"production_date"`
-	ShelfLife         string `bson:"shelf_life"`
+type OrderEntry struct {
+	OrderCode  string `json:"order_code"`
+	TimeExpire string `json:"time_expire"`
 }
 
 const (
 	RpcServiceMicroMallUsers = "micro-mall-users"
 	RpcServiceMicroMallShop  = "micro-mall-shop"
 )
+
+const (
+	TaskNameTradeOrderNotice    = "task_trade_order_notice"
+	TaskNameTradeOrderNoticeErr = "task_trade_order_notice_err"
+)
+
+type CommonBusinessMsg struct {
+	Type int    `json:"type"`
+	Tag  string `json:"tag"`
+	UUID string `json:"uuid"`
+	Msg  string `json:"msg"`
+}
+
+type TradeOrderDetail struct {
+	ShopId    int64  `json:"shop_id"`
+	OrderCode string `json:"order_code"`
+}
+
+type TradeOrderNotice struct {
+	Uid    int64              `json:"uid"`
+	Time   string             `json:"time"`
+	Detail []TradeOrderDetail `json:"detail"`
+}
+
+const (
+	Unknown                   = 0
+	TradeOrderEventTypeCreate = 10014
+	TradeOrderEventTypeExpire = 10015
+)
+
+var MsgFlags = map[int]string{
+	Unknown:                   "未知",
+	TradeOrderEventTypeCreate: "交易订单创建",
+	TradeOrderEventTypeExpire: "交易订单过期",
+}
+
+func GetMsg(code int) string {
+	msg, ok := MsgFlags[code]
+	if ok {
+		return msg
+	}
+	return MsgFlags[Unknown]
+}

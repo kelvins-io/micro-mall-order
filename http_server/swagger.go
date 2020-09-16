@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"gitee.com/cristiane/micro-mall-order/proto"
 	"gitee.com/kelvins-io/common/env"
 )
 
@@ -25,7 +24,7 @@ func SwaggerHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	path := strings.TrimPrefix(r.URL.Path, "/swagger/")
-	bytes, err := proto.Asset(path)
+	bytes, err := Asset(path)
 	if err == nil {
 		w.Write(bytes)
 	}
