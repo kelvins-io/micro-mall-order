@@ -30,6 +30,10 @@ func (o *OrderServer) CreateOrder(ctx context.Context, req *order_business.Creat
 			result.Common.Code = order_business.RetCode_USER_NOT_EXIST
 			result.Common.Msg = errcode.GetErrMsg(code.UserNotExist)
 			return &result, nil
+		} else if retCode == code.SkuAmountNotEnough {
+			result.Common.Code = order_business.RetCode_SKU_AMOUNT_NOT_ENOUGH
+			result.Common.Msg = errcode.GetErrMsg(code.SkuAmountNotEnough)
+			return &result, nil
 		} else {
 			result.Common.Code = order_business.RetCode_ERROR
 			result.Common.Msg = errcode.GetErrMsg(code.ErrorServer)

@@ -103,7 +103,7 @@ func (p *PushNoticeService) sendTaskToQueue(ctx context.Context, taskSign *tasks
 		return "", code.ErrorServer
 	}
 
-	return result.Signature.UUID, code.ErrorServer
+	return result.Signature.UUID, code.Success
 }
 
 func (p *PushNoticeService) GetTaskState(taskId string) (*tasks.TaskState, error) {

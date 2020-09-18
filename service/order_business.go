@@ -7,6 +7,7 @@ import (
 	"gitee.com/cristiane/micro-mall-order/pkg/code"
 	"gitee.com/cristiane/micro-mall-order/pkg/util"
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_order_proto/order_business"
+	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_sku_proto/sku_business"
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_users_proto/users"
 	"gitee.com/cristiane/micro-mall-order/repository"
 	"gitee.com/cristiane/micro-mall-order/vars"
@@ -32,7 +33,6 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 		return
 	}
 	defer conn.Close()
-
 	client := users.NewUsersServiceClient(conn)
 	r := users.GetUserInfoRequest{
 		Uid: req.Uid,
@@ -51,15 +51,20 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 		retCode = code.UserNotExist
 		return
 	}
-
-	// 生成订单
+	// 初始订单和订单明细
 	shops := req.Detail.ShopDetail
 	orderList := make([]mysql.Order, len(shops))
 	orderSkuList := make([]mysql.OrderSku, 0)
 	tradeOrderDetail := make([]args.TradeOrderDetail, len(shops))
+	deductInventoryList := make([]*sku_business.DeductEntryShop, 0)
 	for i := 0; i < len(shops); i++ {
 		orderCode := util.GetUUID()
 		totalAmount := decimal.NewFromInt(0)
+		deductEntryShop := &sku_business.DeductEntryShop{
+			ShopId: shops[i].ShopId,
+			Detail: nil,
+		}
+		deductEntryList := make([]*sku_business.DeductEntryDetail, 0)
 		for j := 0; j < len(shops[i].Goods); j++ {
 			goods := shops[i].Goods[j]
 			price, err := decimal.NewFromString(shops[i].Goods[j].Price)
@@ -72,6 +77,7 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 			totalAmount = util.DecimalAdd(totalAmount, temp)
 			orderSku := mysql.OrderSku{
 				OrderCode:  orderCode,
+				ShopId:     shops[i].ShopId,
 				SkuCode:    goods.SkuCode,
 				Price:      goods.Price,
 				Amount:     int(goods.Amount),
@@ -79,8 +85,14 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 				CreateTime: time.Now(),
 				UpdateTime: time.Now(),
 			}
+			deductEntry := &sku_business.DeductEntryDetail{
+				SkuCode: goods.SkuCode,
+				Amount:  goods.Amount,
+			}
+			deductEntryList = append(deductEntryList, deductEntry)
 			orderSkuList = append(orderSkuList, orderSku)
 		}
+		deductEntryShop.Detail = deductEntryList
 		payExpire := time.Now().Add(30 * time.Minute)
 		order := mysql.Order{
 			OrderCode:    orderCode,
@@ -96,6 +108,7 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 			State:        0,
 			PayExpire:    payExpire,
 			PayState:     0,
+			Amount:       len(shops[i].Goods),
 			TotalAmount:  totalAmount.String(),
 			CreateTime:   time.Now(),
 			UpdateTime:   time.Now(),
@@ -109,8 +122,39 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 			ShopId:    shops[i].ShopId,
 			OrderCode: orderCode,
 		}
+		deductInventoryList = append(deductInventoryList, deductEntryShop)
 	}
+
+	// 扣减库存
+	serverName = args.RpcServiceMicroMallSku
+	conn, err = util.GetGrpcClient(serverName)
+	if err != nil {
+		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
+		retCode = code.ErrorServer
+		return
+	}
+	defer conn.Close()
+	skuSer := sku_business.NewSkuBusinessServiceClient(conn)
+	skuR := sku_business.DeductInventoryRequest{
+		List: deductInventoryList,
+	}
+	skuRsp, err := skuSer.DeductInventory(ctx, &skuR)
+	if err != nil {
+		kelvins.ErrLogger.Errorf(ctx, "DeductInventory %v,err: %v", serverName, err)
+		retCode = code.ErrorServer
+		return
+	}
+	if skuRsp == nil || skuRsp.Common == nil || skuRsp.Common.Code == sku_business.RetCode_ERROR {
+		retCode = code.ErrorServer
+		return
+	}
+	if skuRsp.Common.Code == sku_business.RetCode_SKU_AMOUNT_NOT_ENOUGH {
+		retCode = code.SkuAmountNotEnough
+		return
+	}
+
 	tx := kelvins.XORM_DBEngine.NewSession()
+	// 创建订单
 	err = repository.CreateOrder(tx, orderList)
 	if err != nil {
 		tx.Rollback()
@@ -118,6 +162,7 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 		retCode = code.ErrorServer
 		return
 	}
+	// 创建订单明细
 	err = repository.CreateOrderSku(tx, orderSkuList)
 	if err != nil {
 		tx.Rollback()
@@ -125,6 +170,7 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 		retCode = code.ErrorServer
 		return
 	}
+	tx.Commit()
 
 	// 触发订单事件
 	pushSer := NewPushNoticeService(vars.TradeOrderQueueServer, PushMsgTag{
@@ -143,16 +189,12 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 			Detail: tradeOrderDetail,
 		}),
 	}
-
 	taskUUID, retCode := pushSer.PushMessage(ctx, businessMsg)
 	if retCode != code.Success {
-		tx.Rollback()
 		kelvins.ErrLogger.Errorf(ctx, "trade order businessMsg: %+v  notice send err: ", businessMsg, errcode.GetErrMsg(retCode))
-		retCode = code.ErrorServer
-		return
+	} else {
+		kelvins.BusinessLogger.Infof(ctx, "trade order businessMsg businessMsg: %+v  taskUUID :%v", businessMsg, taskUUID)
 	}
-	kelvins.BusinessLogger.Infof(ctx, "trade order businessMsg businessMsg: %+v  taskUUID :%v", businessMsg, taskUUID)
-	tx.Commit()
 
 	return
 }

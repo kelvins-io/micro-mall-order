@@ -12,6 +12,7 @@ type OrderEntry struct {
 const (
 	RpcServiceMicroMallUsers = "micro-mall-users"
 	RpcServiceMicroMallShop  = "micro-mall-shop"
+	RpcServiceMicroMallSku   = "micro-mall-sku"
 )
 
 const (

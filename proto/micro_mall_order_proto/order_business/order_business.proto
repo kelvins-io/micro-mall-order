@@ -28,6 +28,7 @@ enum RetCode {
     SHOP_EXIST = 50006;
     SKU_NOT_EXIST = 50007;
     SKU_EXIST = 50008;
+    SKU_AMOUNT_NOT_ENOUGH = 50009;
 }
 
 enum OperationType {

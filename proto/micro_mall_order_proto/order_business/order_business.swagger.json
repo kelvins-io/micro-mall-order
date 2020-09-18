@@ -181,7 +181,8 @@
         "SHOP_NOT_EXIST",
         "SHOP_EXIST",
         "SKU_NOT_EXIST",
-        "SKU_EXIST"
+        "SKU_EXIST",
+        "SKU_AMOUNT_NOT_ENOUGH"
       ],
       "default": "SUCCESS"
     },

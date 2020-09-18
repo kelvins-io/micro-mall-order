@@ -47,12 +47,14 @@ type Order struct {
 	TotalAmount  string    `xorm:"not null default 0.0000000000000000 comment('订单总金额') DECIMAL(32,16)"`
 	CreateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
 	UpdateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
+	Amount       int       `xorm:"comment('订单关联商品数量') INT"`
 }
 
 type OrderSku struct {
 	Id         int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
-	OrderCode  string    `xorm:"not null comment('对应订单code') unique(order_code_sku_index) CHAR(64)"`
-	SkuCode    string    `xorm:"not null comment('商品sku') unique(order_code_sku_index) CHAR(64)"`
+	OrderCode  string    `xorm:"not null comment('对应订单code') unique(order_unique) CHAR(64)"`
+	ShopId     int64     `xorm:"not null comment('店铺ID') unique(order_unique) index BIGINT"`
+	SkuCode    string    `xorm:"not null comment('商品sku') unique(order_unique) index CHAR(64)"`
 	Price      string    `xorm:"not null default 0.0000000000000000 comment('商品单价') DECIMAL(32,16)"`
 	Amount     int       `xorm:"not null comment('商品数量') INT"`
 	Name       string    `xorm:"comment('商品名称') index VARCHAR(255)"`
