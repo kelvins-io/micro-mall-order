@@ -5,15 +5,41 @@ import (
 )
 
 type Account struct {
-	AccountCode string    `xorm:"not null pk comment('账户主键') CHAR(50)"`
+	Id          int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
+	AccountCode string    `xorm:"not null comment('账户主键') CHAR(50)"`
 	Owner       string    `xorm:"not null comment('账户所有者') unique(account_index) CHAR(36)"`
 	Balance     string    `xorm:"comment('账户余额') DECIMAL(32,16)"`
-	CoinType    int       `xorm:"not null default 1 comment('币种类型，1-rmb，2-usdt') unique(account_index) TINYINT"`
+	CoinType    int       `xorm:"not null default 0 comment('币种类型，0-rmb，1-usdt') unique(account_index) TINYINT"`
 	CoinDesc    string    `xorm:"comment('币种描述') VARCHAR(64)"`
 	State       int       `xorm:"comment('状态，1无效，2锁定，3正常') TINYINT"`
-	AccountType int       `xorm:"not null comment('账户类型，1-个人账户，2-公司账户，3-系统账户') unique(account_index) TINYINT"`
+	AccountType int       `xorm:"not null pk comment('账户类型，1-个人账户，2-公司账户，3-系统账户') unique(account_index) TINYINT"`
 	CreateTime  time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') index DATETIME"`
 	UpdateTime  time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('更新时间') DATETIME"`
+	LastTxId    string    `xorm:"not null default '99' comment('最后一次事务ID') CHAR(40)"`
+}
+
+type ConfigKvStore struct {
+	Id          int       `xorm:"not null pk autoincr comment('主键') INT"`
+	ConfigKey   string    `xorm:"not null comment('配置键') unique VARCHAR(255)"`
+	ConfigValue string    `xorm:"not null comment('配置值') VARCHAR(255)"`
+	Prefix      string    `xorm:"not null comment('配置前缀') VARCHAR(255)"`
+	Suffix      string    `xorm:"not null comment('配置后缀') VARCHAR(255)"`
+	Status      int       `xorm:"not null default 1 comment('是否启用 1是 0否') TINYINT"`
+	IsDelete    int       `xorm:"not null default 0 comment('是否删除 1是 0否') TINYINT"`
+	CreateTime  time.Time `xorm:"default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
+	UpdateTime  time.Time `xorm:"default CURRENT_TIMESTAMP comment('更新时间') DATETIME"`
+}
+
+type LogisticsRecord struct {
+	Id            int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
+	LogisticsCode string    `xorm:"comment('物流单号') index CHAR(40)"`
+	Location      string    `xorm:"comment('位置') VARCHAR(255)"`
+	State         int       `xorm:"default 0 comment('当前状态') TINYINT"`
+	Description   string    `xorm:"comment('描述') TEXT"`
+	Flag          string    `xorm:"comment('标记') VARCHAR(255)"`
+	Operator      string    `xorm:"comment('操作员') index VARCHAR(512)"`
+	CreateTime    time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
+	UpdateTime    time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('更新时间') DATETIME"`
 }
 
 type Merchant struct {
@@ -30,24 +56,61 @@ type Merchant struct {
 }
 
 type Order struct {
+	Id                  int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
+	TxCode              string    `xorm:"not null comment('交易号') unique(tx_code_order_code_index) CHAR(40)"`
+	OrderCode           string    `xorm:"not null comment('订单code') unique unique(tx_code_order_code_index) CHAR(40)"`
+	Uid                 int64     `xorm:"not null comment('用户UID') index BIGINT"`
+	OrderTime           time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('下单时间') index DATETIME"`
+	Description         string    `xorm:"comment('订单描述') index VARCHAR(255)"`
+	ClientIp            string    `xorm:"comment('客户端IP') CHAR(16)"`
+	DeviceCode          string    `xorm:"comment('客户端设备code') VARCHAR(512)"`
+	ShopId              int64     `xorm:"not null comment('门店ID') index BIGINT"`
+	ShopName            string    `xorm:"not null comment('门店名称') index VARCHAR(255)"`
+	ShopAreaCode        string    `xorm:"comment('门店区域编号') VARCHAR(255)"`
+	ShopAddress         string    `xorm:"comment('门店地址') TEXT"`
+	State               int       `xorm:"not null default 0 comment('订单状态，0-有效，1-锁定中，2-无效') TINYINT"`
+	PayExpire           time.Time `xorm:"not null comment('支付有效期，默认30分钟内有效') DATETIME"`
+	PayState            int       `xorm:"not null default 0 comment('支付状态，0-未支付，1-支付中，2-支付失败，3-已支付') TINYINT"`
+	Amount              int       `xorm:"comment('订单关联商品数量') INT"`
+	TotalAmount         string    `xorm:"not null default 0.0000000000000000 comment('订单总金额') DECIMAL(32,16)"`
+	CoinType            int       `xorm:"default 0 comment(' 订单币种，0-CNY，1-USD') TINYINT"`
+	LogisticsDeliveryId int       `xorm:"comment('物流投递ID') INT"`
+	CreateTime          time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
+	UpdateTime          time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
+}
+
+type OrderEstimate struct {
 	Id           int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
-	OrderCode    string    `xorm:"not null comment('订单code') unique CHAR(40)"`
-	Uid          int64     `xorm:"not null comment('用户UID') index BIGINT"`
-	OrderTime    time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('下单时间') index DATETIME"`
-	Description  string    `xorm:"comment('订单描述') index VARCHAR(255)"`
-	ClientIp     string    `xorm:"comment('客户端IP') CHAR(16)"`
-	DeviceCode   string    `xorm:"comment('客户端设备code') VARCHAR(512)"`
-	ShopId       int64     `xorm:"not null comment('门店ID') index BIGINT"`
-	ShopName     string    `xorm:"not null comment('门店名称') index VARCHAR(255)"`
-	ShopAreaCode string    `xorm:"comment('门店区域编号') VARCHAR(255)"`
-	ShopAddress  string    `xorm:"comment('门店地址') TEXT"`
-	State        int       `xorm:"not null default 0 comment('订单状态，0-有效，1-锁定中，2-无效') TINYINT"`
-	PayExpire    time.Time `xorm:"not null comment('支付有效期，默认30分钟内有效') DATETIME"`
-	PayState     int       `xorm:"not null default 0 comment('支付状态，0-未支付，1-支付中，2-支付失败，3-已支付') TINYINT"`
-	TotalAmount  string    `xorm:"not null default 0.0000000000000000 comment('订单总金额') DECIMAL(32,16)"`
+	EstimateCode string    `xorm:"not null comment('评论code') unique(estimate_code_shop_id) CHAR(40)"`
+	SkuCode      string    `xorm:"comment('商品sku') CHAR(40)"`
+	OrderCode    string    `xorm:"comment('订单code') index CHAR(40)"`
+	Uid          int64     `xorm:"comment('用户uid') index BIGINT"`
+	ShopId       int64     `xorm:"comment('店铺ID') unique(estimate_code_shop_id) index BIGINT"`
+	Content      string    `xorm:"comment('内容') TEXT"`
+	Star         int       `xorm:"comment('星级') INT"`
+	State        int       `xorm:"default 0 comment('状态，0-有效') TINYINT"`
 	CreateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
 	UpdateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
-	Amount       int       `xorm:"comment('订单关联商品数量') INT"`
+}
+
+type OrderLogistics struct {
+	Id            int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
+	LogisticsCode string    `xorm:"not null comment('运单号') unique(logistics_code_order_code) CHAR(40)"`
+	OrderCode     string    `xorm:"not null comment('订单ID') unique(logistics_code_order_code) index CHAR(40)"`
+	State         int       `xorm:"comment('物流状态，0-已下单，1-已取消，2-延迟处理，3-仓库处理中，4-运输中，5-派送中，6-已签收') TINYINT"`
+	Courier       string    `xorm:"comment('国内承运人') index VARCHAR(255)"`
+	FromAddress   string    `xorm:"comment('发货地址') VARCHAR(255)"`
+	ToAddress     string    `xorm:"comment('收获地址') VARCHAR(255)"`
+	Sender        string    `xorm:"comment('发货人') VARCHAR(255)"`
+	Receiver      string    `xorm:"comment('接收人') VARCHAR(255)"`
+	ReceiverPhone string    `xorm:"comment('收货人联系方式') VARCHAR(255)"`
+	SenderPhone   string    `xorm:"comment('发送人联系方式') VARCHAR(255)"`
+	TransportKind string    `xorm:"comment('运送方式') VARCHAR(255)"`
+	ReceiverKind  string    `xorm:"comment('收货方式') VARCHAR(255)"`
+	Goods         string    `xorm:"comment('货物') TEXT"`
+	SendTime      string    `xorm:"comment('派送时间') VARCHAR(255)"`
+	CreateTime    time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
+	UpdateTime    time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('更新时间') DATETIME"`
 }
 
 type OrderSku struct {
@@ -58,9 +121,27 @@ type OrderSku struct {
 	Price      string    `xorm:"not null default 0.0000000000000000 comment('商品单价') DECIMAL(32,16)"`
 	Amount     int       `xorm:"not null comment('商品数量') INT"`
 	Name       string    `xorm:"comment('商品名称') index VARCHAR(255)"`
-	CoinType   int       `xorm:"not null default 1 comment('币种，1-cny,2-usd') TINYINT"`
 	CreateTime time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
 	UpdateTime time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
+}
+
+type PayRecord struct {
+	Id          int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
+	TxId        string    `xorm:"not null comment('批次交易号') index CHAR(40)"`
+	OutTradeNo  string    `xorm:"not null comment('外部商户订单号') index CHAR(40)"`
+	TimeExpire  time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('支付过期时间') DATETIME"`
+	NotifyUrl   string    `xorm:"comment('交易结果通知地址') VARCHAR(255)"`
+	Description string    `xorm:"comment('交易描述') VARCHAR(255)"`
+	Merchant    string    `xorm:"not null comment('交易商户ID') index CHAR(40)"`
+	Attach      string    `xorm:"comment('交易留言') TEXT"`
+	User        string    `xorm:"not null comment('交易用户ID') index CHAR(40)"`
+	Amount      string    `xorm:"not null comment('交易数量') DECIMAL(32,16)"`
+	CoinType    int       `xorm:"not null default 0 comment('交易币种，0-cny,1-usd') TINYINT"`
+	Reduction   string    `xorm:"comment('满减优惠') DECIMAL(32,16)"`
+	PayType     int       `xorm:"not null comment('交易类型，1入账，2退款') TINYINT"`
+	PayState    int       `xorm:"comment('支付状态，0-未支付，1-支付中，2-支付失败，3-支付成功') TINYINT"`
+	CreateTime  time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
+	UpdateTime  time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
 }
 
 type ShopBusiness struct {
@@ -87,8 +168,24 @@ type SkuInventory struct {
 	Amount     int64     `xorm:"comment('库存数量') BIGINT"`
 	Price      string    `xorm:"comment('入库单价') DECIMAL(32,16)"`
 	ShopId     int64     `xorm:"not null comment('所属店铺ID') index unique(sku_code_shop_id_index) BIGINT"`
+	Version    int       `xorm:"not null default 1 comment('商品版本') INT"`
 	CreateTime time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
 	UpdateTime time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
+}
+
+type SkuInventoryRecord struct {
+	Id           int64     `xorm:"pk autoincr comment('自责ID') BIGINT"`
+	ShopId       int64     `xorm:"comment('店铺ID') BIGINT"`
+	SkuCode      string    `xorm:"comment('商品sku') CHAR(40)"`
+	OpType       int       `xorm:"default 0 comment('操作类型，0-入库，1-出库，2-冻结') TINYINT"`
+	OpUid        int64     `xorm:"comment('操作的用户ID') BIGINT"`
+	OpIp         string    `xorm:"comment('操作IP地址') VARCHAR(255)"`
+	AmountBefore int64     `xorm:"comment('变化之前数量') BIGINT"`
+	Amount       int64     `xorm:"comment('操作数量') BIGINT"`
+	OpTxId       string    `xorm:"comment('操作的事务ID') index CHAR(40)"`
+	State        int       `xorm:"default 0 comment('状态，0-有效，1-锁定中，2-无效') TINYINT"`
+	CreateTime   time.Time `xorm:"default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
+	UpdateTime   time.Time `xorm:"default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
 }
 
 type SkuPriceHistory struct {
@@ -125,7 +222,7 @@ type SkuProperty struct {
 }
 
 type Transaction struct {
-	Id              int64     `xorm:"pk comment('交易ID') BIGINT"`
+	Id              int64     `xorm:"pk autoincr comment('交易ID') BIGINT"`
 	FromAccountCode string    `xorm:"not null default '0' comment('转出账户ID') CHAR(36)"`
 	FromBalance     string    `xorm:"default 0.0000000000000000 comment('转出后账户余额') DECIMAL(32,16)"`
 	ToAccountCode   string    `xorm:"not null default '0' comment('转入账户ID') CHAR(36)"`
@@ -136,7 +233,7 @@ type Transaction struct {
 	OpUid           int64     `xorm:"not null comment('操作用户UID') BIGINT"`
 	OpIp            string    `xorm:"comment('操作的IP') VARCHAR(16)"`
 	TxId            string    `xorm:"comment('对应交易号') CHAR(36)"`
-	Fingerprint     string    `xorm:"not null comment('防篡改指纹') VARCHAR(32)"`
+	Fingerprint     string    `xorm:"not null comment('防篡改指纹') TEXT"`
 	PayType         int       `xorm:"default 0 comment('支付方式，0系统操作，1-银行卡，2-信用卡,3-支付宝,4-微信支付,5-京东支付') TINYINT"`
 	PayDesc         string    `xorm:"comment('支付方式描述') VARCHAR(36)"`
 	CreateTime      time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
@@ -161,6 +258,19 @@ type User struct {
 	UpdateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
 	ContactAddr  string    `xorm:"comment('联系地址') TEXT"`
 	Age          int       `xorm:"comment('年龄') INT"`
+}
+
+type UserLogisticsDelivery struct {
+	Id           int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
+	Uid          int64     `xorm:"comment('用户ID') index BIGINT"`
+	DeliveryUser string    `xorm:"comment('交付人') VARCHAR(512)"`
+	MobilePhone  string    `xorm:"comment('手机号') VARCHAR(255)"`
+	Area         string    `xorm:"comment('交付区域') VARCHAR(255)"`
+	AreaDetailed string    `xorm:"comment('详细地址') TEXT"`
+	Label        string    `xorm:"comment('标签，多个以|分割开') TEXT"`
+	IsDefault    int       `xorm:"default 0 comment('是否为默认，1-默认') TINYINT"`
+	CreateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
+	UpdateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('更新时间') DATETIME"`
 }
 
 type UserTrolley struct {

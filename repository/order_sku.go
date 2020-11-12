@@ -11,9 +11,9 @@ func CreateOrderSku(tx *xorm.Session, models []mysql.OrderSku) (err error) {
 	return
 }
 
-func GetOrderSkuListByOrderCode(orderCode string) ([]mysql.OrderSku, error) {
+func GetOrderSkuListByOrderCode(orderCode []string) ([]mysql.OrderSku, error) {
 	var result = make([]mysql.OrderSku, 0)
 	var err error
-	err = kelvins.XORM_DBEngine.Table(mysql.TableOrderSku).Where("order_code = ?", orderCode).Find(&result)
+	err = kelvins.XORM_DBEngine.Table(mysql.TableOrderSku).In("order_code", orderCode).Find(&result)
 	return result, err
 }

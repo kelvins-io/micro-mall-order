@@ -32,20 +32,34 @@ service SkuBusinessService {
             body:"*"
         };
     }
+    // 恢复库存
+    rpc RestoreInventory(RestoreInventoryRequest) returns (RestoreInventoryResponse) {
+        option (google.api.http) = {
+            put: "/v1/sku/inventory/restore"
+            body:"*"
+        };
+    }
 }
 
-message DeductEntryShop {
+message OperationMeta {
+    int64 op_uid = 1;
+    string op_ip = 2;
+}
+
+message InventoryEntryShop {
     int64 shop_id = 1;
-    repeated DeductEntryDetail detail = 2;
+    string out_trade_no = 2;
+    repeated InventoryEntryDetail detail = 3;
 }
 
-message DeductEntryDetail {
+message InventoryEntryDetail {
     string sku_code = 1;
     int64 amount = 2;
 }
 
 message DeductInventoryRequest {
-    repeated DeductEntryShop list = 1;
+    repeated InventoryEntryShop list = 1;
+    OperationMeta operation_meta = 199;
 }
 
 message DeductInventoryResponse {
@@ -53,10 +67,17 @@ message DeductInventoryResponse {
     bool is_success = 2; // 是否成功，要么全部成功，要么全部失败
 }
 
-message SupplementSkuPropertyRequest {
-    int64 op_uid = 1; // 操作员
-    string op_ip = 2; // 操作员IP
+message RestoreInventoryRequest {
+    repeated InventoryEntryShop list = 1;
+    OperationMeta operation_meta = 199;
+}
 
+message RestoreInventoryResponse {
+    CommonResponse common = 1;
+    bool is_success = 2; // 是否成功，要么全部成功，要么全部失败
+}
+
+message SupplementSkuPropertyRequest {
     int64 shop_id = 11;
     string sku_code = 12; // 商品唯一sku
     string size = 13;
@@ -65,9 +86,9 @@ message SupplementSkuPropertyRequest {
     string production_date = 16;
     string shelf_life = 17;
     string name = 18;
-
-
-    OperationType operation_type = 4999;
+    string out_trade_no = 2;
+    OperationMeta operation_meta = 199;
+    OperationType operation_type = 299;
 }
 
 message SupplementSkuPropertyResponse {
@@ -104,10 +125,9 @@ message SkuInventoryInfo {
 }
 
 message PutAwaySkuRequest {
-    int64 op_uid = 1; // 操作员
-    string op_ip = 2; // 操作员IP
-    SkuInventoryInfo sku = 3;
+    SkuInventoryInfo sku = 1;
     OperationType operation_type = 299;
+    OperationMeta operation_meta = 300;
 }
 
 message PutAwaySkuResponse {
@@ -126,6 +146,7 @@ enum RetCode {
     SKU_NOT_EXIST = 50007;
     SKU_EXIST = 50008;
     SKU_AMOUNT_NOT_ENOUGH = 50009;
+    TRANSACTION_FAILED = 50010;
 }
 
 enum OperationType {

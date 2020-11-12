@@ -11,16 +11,24 @@ func CreateOrder(tx *xorm.Session, models []mysql.Order) (err error) {
 	return
 }
 
-func GetOrderByOrderCode(orderCode string) (*mysql.Order, error) {
+func GetOrderExist(txCode string) (*mysql.Order, error) {
 	var model mysql.Order
 	var err error
-	_, err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Where("order_code = ?", orderCode).Get(&model)
+	_, err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Select("tx_code,order_code").Where("tx_code = ?", txCode).Get(&model)
 	return &model, err
 }
 
-func GetOrderListByUid(uid int) ([]mysql.Order, error) {
+func GetOrderListByTxCode(txCode string) ([]mysql.Order, error) {
 	var result = make([]mysql.Order, 0)
 	var err error
-	err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Where("uid = ?", uid).Find(&result)
+	err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Where("tx_code = ?", txCode).Find(&result)
 	return result, err
+}
+
+func UpdateOrder(query, maps interface{}) (int64, error) {
+	return kelvins.XORM_DBEngine.Table(mysql.TableOrder).Where(query).Update(maps)
+}
+
+func UpdateOrderByTx(tx *xorm.Session, query, maps interface{}) (int64, error) {
+	return tx.Table(mysql.TableOrder).Where(query).Update(maps)
 }

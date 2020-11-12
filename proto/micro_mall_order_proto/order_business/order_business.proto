@@ -7,6 +7,19 @@ import "gitee.com/kelvins-io/common/proto/google/api/annotations.proto";
 
 // 订单服务
 service OrderBusinessService {
+
+    // 生成唯一订单事务号
+    rpc GenOrderTxCode(GenOrderTxCodeRequest) returns (GenOrderTxCodeResponse) {
+        option (google.api.http) = {
+            get: "/v1/order/code"
+        };
+    }
+    // 检查外部订单号是否存在
+    rpc CheckOrderExist(CheckOrderExistRequest) returns (CheckOrderExistResponse) {
+        option (google.api.http) = {
+            get: "/v1/order/code/exist"
+        };
+    }
     // 创建订单
     rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse) {
         option (google.api.http) = {
@@ -14,7 +27,32 @@ service OrderBusinessService {
             body:"*"
         };
     }
-
+    // 获取订单详情
+    rpc GetOrderDetail(GetOrderDetailRequest) returns (GetOrderDetailResponse) {
+        option (google.api.http) = {
+            get: "/v1/order/detail"
+        };
+    }
+    // 获取订单商品
+    rpc GetOrderSku(GetOrderSkuRequest) returns (GetOrderSkuResponse) {
+        option (google.api.http) = {
+            get: "/v1/order/sku"
+        };
+    }
+    // 更新订单状态
+    rpc UpdateOrderState(UpdateOrderStateRequest) returns (UpdateOrderStateResponse) {
+        option (google.api.http) = {
+            post: "/v1/order/state"
+            body:"*"
+        };
+    }
+    // 订单支付通知
+    rpc OrderTradeNotice(OrderTradeNoticeRequest) returns (OrderTradeNoticeResponse) {
+        option (google.api.http) = {
+            post: "/v1/order/notice"
+            body:"*"
+        };
+    }
 }
 
 enum RetCode {
@@ -29,6 +67,15 @@ enum RetCode {
     SKU_NOT_EXIST = 50007;
     SKU_EXIST = 50008;
     SKU_AMOUNT_NOT_ENOUGH = 50009;
+    TRANSACTION_FAILED = 50010;
+    ORDER_NOT_EXIST = 50011;
+    ORDER_EXIST = 50012;
+    ORDER_STATE_PROHIBIT = 50013; // 订单状态不允许修改
+    ORDER_STATE_LOCKED = 50014; // 订单处于锁定状态
+    OPERATION_NOT_EFFECT = 50015; // 操作未生效
+    ORDER_TX_CODE_EMPTY = 50016; // 订单事务号为空
+    ORDER_DELIVERY_NOT_EXIST = 50017; // 订单交付信息不存在
+    ORDER_TX_CODE_NOT_EXIST = 50018; // 订单交易号不存在
 }
 
 enum OperationType {
@@ -61,6 +108,89 @@ message CommonResponse {
     string msg = 2;
 }
 
+enum OrderStateType {
+    ORDER_EFFECTIVE = 0; // 有效
+    ORDER_INVALID = 1; // 无效
+    ORDER_LOCKED = 2; // 锁定
+}
+
+enum OrderPayStateType {
+    PAY_READY = 0; // 支付就绪，未支付
+    PAY_RUN = 1; // 正在支付中
+    PAY_SUCCESS = 2; // 支付成功
+    PAY_FAILED = 3; // 支付失败
+}
+
+message OperationMeta {
+    int64 op_uid = 1;
+    string op_ip = 2;
+    string op_platform = 3; // 操作平台
+    string op_device = 4; // 操作设备
+}
+
+message OrderStateEntry {
+    string order_code = 1;
+    OrderStateType state = 2;
+    OrderPayStateType pay_state = 3;
+}
+
+message UpdateOrderStateRequest {
+    repeated OrderStateEntry entry_list = 1;
+    OperationMeta operation_meta = 2;
+}
+
+message OrderTradeNoticeRequest {
+    int64 uid = 1;
+    string order_tx_code = 2; // 订单交易号
+    string pay_id = 3; // 支付ID（支付后产生）
+}
+
+message OrderTradeNoticeResponse {
+    CommonResponse common = 1;
+}
+
+message UpdateOrderStateResponse {
+    CommonResponse common = 1;
+}
+
+message GetOrderSkuRequest {
+    string tx_code = 1;
+}
+
+message GetOrderSkuResponse {
+    CommonResponse common = 1;
+    repeated OrderSku order_list = 2;
+}
+
+message OrderSku {
+    string order_code = 1;
+    repeated OrderGoods goods = 2; // 商品列表
+}
+
+message GetOrderDetailRequest {
+    string tx_code = 1;
+}
+
+message ShopOrderDetail {
+    string order_code  = 1;
+    string merchant = 2; // 店铺商户,店铺主体
+    string time_expire = 3; // 订单有效期
+    string notify_url = 4; // 订单支付成功通知
+    string description = 5; // 订单描述
+    TradeGoodsDetail detail = 199;
+}
+
+message GetOrderDetailResponse {
+    CommonResponse common = 1;
+    string account = 4; // 订单涉及的用户
+    CoinType coin_type = 2; // 币种
+    repeated ShopOrderDetail list = 90;
+}
+
+message TradeGoodsDetail {
+    string money = 1; // 需要支付金额
+}
+
 message OrderDetail {
     repeated OrderShopDetail shop_detail = 1;
 }
@@ -78,6 +208,8 @@ message OrderGoods {
     string price = 3;
     int64 amount = 4;
     string name = 5;
+    string reduction = 6;
+    int64 version = 7; // 商品价格版本，应对商品价格调整
 }
 
 // 一个店铺的商品算一个订单，如果同时包含多个店铺则有多个订单
@@ -87,7 +219,14 @@ message CreateOrderRequest {
     string description = 3; // 订单描述
     string payer_client_ip = 4; // 用户终端IP
     string device_id = 5; // 用户设备号
+
+    string order_tx_code = 298;
     OrderDetail detail = 299;
+    OrderDeliveryInfo delivery_info = 300; // 订单交付信息
+}
+
+message OrderDeliveryInfo {
+    int32 user_delivery_id = 1; // 用户收货地址
 }
 
 // 支付场景信息
@@ -110,5 +249,24 @@ message OrderEntry {
 
 message CreateOrderResponse {
     CommonResponse common = 1;
-    repeated OrderEntry order_list = 2;
+    string tx_code = 2;
+}
+
+message CheckOrderExistRequest {
+    int64 uid = 1;
+    string order_tx_code = 2;
+}
+
+message CheckOrderExistResponse {
+    CommonResponse common = 1;
+    bool is_exist = 2;
+}
+
+message GenOrderTxCodeRequest {
+    int64 uid = 1;
+}
+
+message GenOrderTxCodeResponse {
+    CommonResponse common = 1;
+    string order_tx_code = 2;
 }
