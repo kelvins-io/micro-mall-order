@@ -27,7 +27,7 @@ func GenOrderTxCode(ctx context.Context, req *order_business.GenOrderTxCodeReque
 func CheckOrderExist(ctx context.Context, req *order_business.CheckOrderExistRequest) (isExist bool, retCode int) {
 	retCode = code.Success
 	// 检查是否重复下单
-	isExist, retCode = checkTradeOrder(ctx, req.OrderTxCode)
+	isExist, retCode = checkTradeOrderExist(ctx, req.OrderTxCode)
 	if retCode != code.Success {
 		return
 	}
@@ -41,7 +41,57 @@ func CheckOrderExist(ctx context.Context, req *order_business.CheckOrderExistReq
 	return
 }
 
-func createOrderCheck(ctx context.Context, req *order_business.CreateOrderRequest) int {
+func createOrderCheckPriceVersion(ctx context.Context, req *order_business.CreateOrderRequest) int {
+	setList := make([]*sku_business.SkuPriceVersionSet, 0)
+	for i := 0; i < len(req.Detail.ShopDetail); i++ {
+		set := &sku_business.SkuPriceVersionSet{
+			ShopId:    req.Detail.ShopDetail[i].ShopId,
+			EntryList: nil,
+		}
+		entryList := make([]*sku_business.SkuPriceVersionEntry, 0)
+		for j := 0; j < len(req.Detail.ShopDetail[i].Goods); j++ {
+			entry := &sku_business.SkuPriceVersionEntry{
+				SkuCode: req.Detail.ShopDetail[i].Goods[j].SkuCode,
+				Price:   req.Detail.ShopDetail[i].Goods[j].Price,
+				Version: req.Detail.ShopDetail[i].Goods[j].Version,
+			}
+			entryList = append(entryList, entry)
+		}
+		set.EntryList = entryList
+		setList = append(setList, set)
+	}
+	serverName := args.RpcServiceMicroMallSku
+	conn, err := util.GetGrpcClient(serverName)
+	if err != nil {
+		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
+		return code.ErrorServer
+	}
+	defer conn.Close()
+	client := sku_business.NewSkuBusinessServiceClient(conn)
+	filtrateReq := &sku_business.FiltrateSkuPriceVersionRequest{
+		SetList:    setList,
+		PolicyType: sku_business.SkuPricePolicyFiltrateType_VERSION_SECTION,
+		LimitUpper: 3,
+	}
+	filtrateRsp, err := client.FiltrateSkuPriceVersion(ctx, filtrateReq)
+	if err != nil {
+		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v, req: %+v", serverName, err, filtrateReq)
+		return code.ErrorServer
+	}
+	if filtrateRsp.Common.Code == sku_business.RetCode_SUCCESS {
+		return code.Success
+	}
+	kelvins.ErrLogger.Errorf(ctx, "FiltrateSkuPriceVersion req: %+v, rsp: %+v", filtrateReq, filtrateRsp)
+	switch filtrateRsp.Common.Code {
+	case sku_business.RetCode_SKU_PRICE_VERSION_NOT_EXIST:
+		return code.SkuPriceVersionNotExist
+	case sku_business.RetCode_ERROR:
+		return code.ErrorServer
+	}
+	return code.ErrorServer
+}
+
+func createOrderCheckUserDelivery(ctx context.Context, req *order_business.CreateOrderRequest) int {
 	if req.Uid <= 0 {
 		return code.UserNotExist
 	}
@@ -82,17 +132,17 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 	}
 	retCode = code.Success
 	// 参数检查
-	retCode = createOrderCheck(ctx, req)
+	retCode = createOrderCheckUserDelivery(ctx, req)
 	if retCode != code.Success {
 		return
 	}
 	// 检查用户身份
-	retCode = tradeOrderCheckUser(ctx, req)
+	retCode = tradeOrderCheckUserIdentity(ctx, req)
 	if retCode != code.Success {
 		return
 	}
 	// 检查是否重复下单
-	isExist, retCode := checkTradeOrder(ctx, req.OrderTxCode)
+	isExist, retCode := checkTradeOrderExist(ctx, req.OrderTxCode)
 	if retCode != code.Success {
 		return
 	}
@@ -101,7 +151,11 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 		result.TxCode = req.OrderTxCode
 		return
 	}
-
+	// 检查商品价格版本是否符合预期
+	retCode = createOrderCheckPriceVersion(ctx, req)
+	if retCode != code.Success {
+		return
+	}
 	//txCode := util.GetUUID()
 	txCode := req.OrderTxCode
 	// 扣减库存，构造订单
@@ -145,7 +199,7 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 	return
 }
 
-func checkTradeOrder(ctx context.Context, orderTxCode string) (bool, int) {
+func checkTradeOrderExist(ctx context.Context, orderTxCode string) (bool, int) {
 	if orderTxCode == "" {
 		return true, code.OrderTxCodeEmpty
 	}
@@ -301,7 +355,7 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 	return orderList, orderSkuList, code.Success
 }
 
-func tradeOrderCheckUser(ctx context.Context, req *order_business.CreateOrderRequest) int {
+func tradeOrderCheckUserIdentity(ctx context.Context, req *order_business.CreateOrderRequest) int {
 	// 检查用户
 	serverName := args.RpcServiceMicroMallUsers
 	conn, err := util.GetGrpcClient(serverName)

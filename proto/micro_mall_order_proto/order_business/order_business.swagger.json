@@ -548,7 +548,8 @@
         "OPERATION_NOT_EFFECT",
         "ORDER_TX_CODE_EMPTY",
         "ORDER_DELIVERY_NOT_EXIST",
-        "ORDER_TX_CODE_NOT_EXIST"
+        "ORDER_TX_CODE_NOT_EXIST",
+        "SKU_PRICE_VERSION_NOT_EXIST"
       ],
       "default": "SUCCESS"
     },

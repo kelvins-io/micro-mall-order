@@ -39,6 +39,14 @@ service SkuBusinessService {
             body:"*"
         };
     }
+    // 按策略筛选商品价格版本
+    rpc FiltrateSkuPriceVersion(FiltrateSkuPriceVersionRequest) returns (FiltrateSkuPriceVersionResponse) {
+        option (google.api.http) = {
+            post: "/v1/sku/price/filtrate"
+            body:"*"
+        };
+    }
+
 }
 
 message OperationMeta {
@@ -75,6 +83,39 @@ message RestoreInventoryRequest {
 message RestoreInventoryResponse {
     CommonResponse common = 1;
     bool is_success = 2; // 是否成功，要么全部成功，要么全部失败
+}
+
+message SkuPriceVersionSet {
+    int64 shop_id = 1;
+    repeated SkuPriceVersionEntry entry_list = 2;
+}
+
+message SkuPriceVersionEntry {
+    string sku_code = 2;
+    string price = 3;
+    int64 version = 4;
+}
+
+enum SkuPricePolicyFiltrateType {
+    VERSION_SECTION = 0; // 按版本区间
+    VERSION_UPPER = 1; // 版本上限
+    VERSION_LOWER = 2; // 版本下限
+}
+
+message FiltrateSkuPriceVersionRequest {
+    repeated SkuPriceVersionSet set_list = 1;
+    SkuPricePolicyFiltrateType policy_type = 2; // 价格筛选策略类型
+    uint32 limit_upper = 3; // 最低筛选几个价格区间
+}
+
+message FiltrateSkuPriceVersionResult {
+    int64 shop_id = 1;
+    repeated string sku_code = 2;
+}
+
+message FiltrateSkuPriceVersionResponse {
+    CommonResponse common = 1;
+    repeated FiltrateSkuPriceVersionResult result = 2; // 返回不满足筛选区间的商品列表
 }
 
 message SupplementSkuPropertyRequest {
@@ -119,9 +160,9 @@ message SkuInventoryInfo {
     string specification = 12;
     string desc_link = 13;
     int32 state = 14;
-
-    int64 amount = 198; // 入库数量
-    int64 shop_id = 199; // 店铺id
+    int64 version = 15; // 商品版本，主要应对调价，下单时需要
+    int64 amount = 16; // 入库数量
+    int64 shop_id = 17; // 店铺id
 }
 
 message PutAwaySkuRequest {
@@ -147,6 +188,9 @@ enum RetCode {
     SKU_EXIST = 50008;
     SKU_AMOUNT_NOT_ENOUGH = 50009;
     TRANSACTION_FAILED = 50010;
+    SKU_PRICE_VERSION_NOT_EXIST = 50011;
+    SKU_PRICE_VERSION_POLICY_TYPE_NOT_SUPPORT = 50012;
+    SKU_PRICE_VERSION_POLICY_DATA_FORMAT_ERR = 50013;
 }
 
 enum OperationType {

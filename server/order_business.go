@@ -24,7 +24,9 @@ func (o *OrderServer) CreateOrder(ctx context.Context, req *order_business.Creat
 	rsp, retCode := service.CreateOrder(ctx, req)
 	result.TxCode = rsp.TxCode
 	if retCode != code.Success {
-		if retCode == code.OrderDeliveryNotExist {
+		if retCode == code.SkuPriceVersionNotExist {
+			result.Common.Code = order_business.RetCode_SKU_PRICE_VERSION_NOT_EXIST
+		} else if retCode == code.OrderDeliveryNotExist {
 			result.Common.Code = order_business.RetCode_ORDER_DELIVERY_NOT_EXIST
 		} else if retCode == code.OrderTxCodeEmpty {
 			result.Common.Code = order_business.RetCode_ORDER_TX_CODE_EMPTY
