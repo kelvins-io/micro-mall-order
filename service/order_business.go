@@ -159,11 +159,10 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 	//txCode := util.GetUUID()
 	txCode := req.OrderTxCode
 	// 扣减库存，构造订单
-	orderList, orderSkuList, retCode := tradeOrderDeductInventory(ctx, req, txCode)
+	orderList, orderSkuList, orderSceneShopList, retCode := tradeOrderDeductInventory(ctx, req, txCode)
 	if retCode != code.Success {
 		return
 	}
-
 	tx := kelvins.XORM_DBEngine.NewSession()
 	err := tx.Begin()
 	if err != nil {
@@ -172,7 +171,7 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 		return
 	}
 	// 创建订单
-	retCode = tradeOrderCreate(ctx, tx, orderList, orderSkuList)
+	retCode = tradeOrderCreate(ctx, tx, orderList, orderSkuList, orderSceneShopList)
 	if retCode != code.Success {
 		errRollback := tx.Rollback()
 		if errRollback != nil {
@@ -214,7 +213,7 @@ func checkTradeOrderExist(ctx context.Context, orderTxCode string) (bool, int) {
 	return false, code.Success
 }
 
-func tradeOrderCreate(ctx context.Context, tx *xorm.Session, orderList []mysql.Order, orderSkuList []mysql.OrderSku) int {
+func tradeOrderCreate(ctx context.Context, tx *xorm.Session, orderList []mysql.Order, orderSkuList []mysql.OrderSku, orderSceneShopList []mysql.OrderSceneShop) int {
 	// 创建订单
 	err := repository.CreateOrder(tx, orderList)
 	if err != nil {
@@ -235,14 +234,25 @@ func tradeOrderCreate(ctx context.Context, tx *xorm.Session, orderList []mysql.O
 		kelvins.ErrLogger.Errorf(ctx, "CreateOrderSku err: %v, orderSkuList: %+v", err, orderSkuList)
 		return code.ErrorServer
 	}
+	// 创建订单场景信息
+	err = repository.CreateOrderSceneShop(tx, orderSceneShopList)
+	if err != nil {
+		errRollback := tx.Rollback()
+		if errRollback != nil {
+			kelvins.ErrLogger.Errorf(ctx, "CreateOrderSceneShop Rollback err: %v", errRollback)
+		}
+		kelvins.ErrLogger.Errorf(ctx, "CreateOrderSceneShop err: %v, orderSceneShopList: %+v", err, orderSceneShopList)
+		return code.ErrorServer
+	}
 	return code.Success
 }
 
-func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOrderRequest, txCode string) ([]mysql.Order, []mysql.OrderSku, int) {
+func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOrderRequest, txCode string) ([]mysql.Order, []mysql.OrderSku, []mysql.OrderSceneShop, int) {
 	// 初始订单和订单明细
 	shops := req.Detail.ShopDetail
 	orderList := make([]mysql.Order, len(shops))
 	orderSkuList := make([]mysql.OrderSku, 0)
+	orderSceneShopList := make([]mysql.OrderSceneShop, 0)
 	deductInventoryList := make([]*sku_business.InventoryEntryShop, 0)
 	for i := 0; i < len(shops); i++ {
 		orderCode := util.GetUUID()
@@ -264,7 +274,7 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 			price, err := decimal.NewFromString(shops[i].Goods[j].Price)
 			if err != nil {
 				kelvins.ErrLogger.Errorf(ctx, "decimal NewFromString err: %v, Price: %v", err, shops[i].Goods[j].Price)
-				return nil, nil, code.ErrorServer
+				return nil, nil, nil, code.ErrorServer
 			}
 			if shops[i].Goods[j].Reduction == "" {
 				shops[i].Goods[j].Reduction = "0"
@@ -272,7 +282,7 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 			reduction, err := decimal.NewFromString(shops[i].Goods[j].Reduction)
 			if err != nil {
 				kelvins.ErrLogger.Errorf(ctx, "decimal NewFromString err: %v, Reduction: %v", err, shops[i].Goods[j].Reduction)
-				return nil, nil, code.ErrorServer
+				return nil, nil, nil, code.ErrorServer
 			}
 			price = util.DecimalSub(price, reduction)
 			temp := util.DecimalMul(price, decimal.NewFromInt(shops[i].Goods[j].Amount))
@@ -305,12 +315,9 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 			ClientIp:            req.PayerClientIp,
 			DeviceCode:          req.DeviceId,
 			ShopId:              shops[i].ShopId,
-			ShopName:            shops[i].SceneInfo.StoreInfo.Name,
-			ShopAreaCode:        shops[i].SceneInfo.StoreInfo.AreaCode,
-			ShopAddress:         shops[i].SceneInfo.StoreInfo.Address,
 			State:               0,
 			PayExpire:           payExpire,
-			PayState:            0,
+			PayState:            1,
 			Amount:              int(skuAmount),
 			TotalAmount:         totalAmount.String(),
 			CoinType:            int(shops[i].CoinType),
@@ -318,6 +325,16 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 			CreateTime:          time.Now(),
 			UpdateTime:          time.Now(),
 		}
+		orderSceneShop := mysql.OrderSceneShop{
+			OrderCode:    orderCode,
+			ShopId:       shops[i].ShopId,
+			ShopName:     shops[i].SceneInfo.StoreInfo.Name,
+			ShopAreaCode: shops[i].SceneInfo.StoreInfo.AreaCode,
+			ShopAddress:  shops[i].SceneInfo.StoreInfo.Address,
+			CreateTime:   time.Time{},
+			UpdateTime:   time.Time{},
+		}
+		orderSceneShopList = append(orderSceneShopList, orderSceneShop)
 		orderList[i] = order
 		deductInventoryList = append(deductInventoryList, deductEntryShop)
 	}
@@ -327,7 +344,7 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 	conn, err := util.GetGrpcClient(serverName)
 	if err != nil {
 		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
-		return nil, nil, code.ErrorServer
+		return nil, nil, nil, code.ErrorServer
 	}
 	defer conn.Close()
 	skuClient := sku_business.NewSkuBusinessServiceClient(conn)
@@ -341,18 +358,18 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 	skuRsp, err := skuClient.DeductInventory(ctx, &skuR)
 	if err != nil {
 		kelvins.ErrLogger.Errorf(ctx, "DeductInventory %v,err: %v", serverName, err)
-		return nil, nil, code.ErrorServer
+		return nil, nil, nil, code.ErrorServer
 	}
 	if skuRsp == nil || skuRsp.Common == nil || skuRsp.Common.Code == sku_business.RetCode_ERROR {
-		return nil, nil, code.ErrorServer
+		return nil, nil, nil, code.ErrorServer
 	}
 	if skuRsp.Common.Code == sku_business.RetCode_SKU_AMOUNT_NOT_ENOUGH {
-		return nil, nil, code.SkuAmountNotEnough
+		return nil, nil, nil, code.SkuAmountNotEnough
 	}
 	if skuRsp.Common.Code == sku_business.RetCode_TRANSACTION_FAILED {
-		return nil, nil, code.TransactionFailed
+		return nil, nil, nil, code.TransactionFailed
 	}
-	return orderList, orderSkuList, code.Success
+	return orderList, orderSkuList, orderSceneShopList, code.Success
 }
 
 func tradeOrderCheckUserIdentity(ctx context.Context, req *order_business.CreateOrderRequest) int {
@@ -414,14 +431,33 @@ func GetOrderDetail(ctx context.Context, req *order_business.GetOrderDetailReque
 	result.List = make([]args.ShopOrderDetail, 0)
 	retCode = code.Success
 	// 通过交易号获取订单详细
-	orderList, err := repository.GetOrderListByTxCode(req.TxCode)
+	where := map[string]interface{}{
+		"tx_code": req.TxCode, // 订单事务号
+		//"state":     0,           // 有效
+		//"pay_state": []int{0, 2}, // 支付失败或未支付
+	}
+	orderList, err := repository.GetOrderListByTxCode(where)
 	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "GetOrderListByTxCode err: %v, TxCode: %+v", err, req.TxCode)
+		kelvins.ErrLogger.Errorf(ctx, "GetOrderListByTxCode err: %v, where: %+v", err, where)
 		retCode = code.ErrorServer
 		return
 	}
 	if len(orderList) <= 0 {
 		return
+	}
+	for i := 0; i < len(orderList); i++ {
+		if orderList[i].State != 0 {
+			retCode = code.OrderStateInvalid
+			return
+		}
+		if orderList[i].PayState != 0 && orderList[i].PayState != 2 {
+			retCode = code.OrderPayCompleted
+			return
+		}
+		if orderList[i].PayExpire.Sub(time.Now()) <= 0 {
+			retCode = code.OrderExpire
+			return
+		}
 	}
 	uid := orderList[0].Uid
 	coinType := orderList[0].CoinType
@@ -492,13 +528,13 @@ func GetOrderDetail(ctx context.Context, req *order_business.GetOrderDetailReque
 	for i := 0; i < len(rspShop.InfoList); i++ {
 		shopIdToShopCode[rspShop.InfoList[i].ShopId] = rspShop.InfoList[i].ShopCode
 	}
-	key := args.ConfigKvShopOrderNotifyUrl
-	config, err := repository.GetConfigKv(key)
-	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "GetConfigKv err: %v ,key: %v", err, key)
-		retCode = code.ErrorServer
-		return
-	}
+	//key := args.ConfigKvShopOrderNotifyUrl
+	//config, err := repository.GetConfigKv(key)
+	//if err != nil {
+	//	kelvins.ErrLogger.Errorf(ctx, "GetConfigKv err: %v ,key: %v", err, key)
+	//	retCode = code.ErrorServer
+	//	return
+	//}
 	result.List = make([]args.ShopOrderDetail, len(orderList))
 	for i := 0; i < len(orderList); i++ {
 		detail := args.ShopOrderDetail{
@@ -508,7 +544,7 @@ func GetOrderDetail(ctx context.Context, req *order_business.GetOrderDetailReque
 			Description: orderList[i].Description,
 			Amount:      orderList[i].TotalAmount,
 			CoinType:    orderList[i].CoinType,
-			NotifyUrl:   config.ConfigValue,
+			//NotifyUrl:   config.ConfigValue,
 		}
 		result.List[i] = detail
 	}
@@ -518,7 +554,12 @@ func GetOrderDetail(ctx context.Context, req *order_business.GetOrderDetailReque
 func GetOrderSku(ctx context.Context, req *order_business.GetOrderSkuRequest) (*args.OrderSkuRsp, int) {
 	result := &args.OrderSkuRsp{SkuList: make([]args.OrderSku, 0)}
 	retCode := code.Success
-	orderList, err := repository.GetOrderListByTxCode(req.TxCode)
+	where := map[string]interface{}{
+		"tx_code":   req.TxCode,  // 订单事务号
+		"state":     0,           // 有效
+		"pay_state": []int{0, 2}, // 支付失败或未支付
+	}
+	orderList, err := repository.GetOrderListByTxCode(where)
 	if err != nil {
 		kelvins.ErrLogger.Errorf(ctx, "GetOrderListByTxCode err: %v ,tx-code: %v", err, req.TxCode)
 		retCode = code.ErrorServer

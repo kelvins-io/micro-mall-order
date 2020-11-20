@@ -53,6 +53,13 @@ service OrderBusinessService {
             body:"*"
         };
     }
+    // 订单状态检查
+    rpc CheckOrderState(CheckOrderStateRequest) returns (CheckOrderStateResponse) {
+        option (google.api.http) = {
+            post: "/v1/order/check"
+            body:"*"
+        };
+    }
 }
 
 enum RetCode {
@@ -77,6 +84,9 @@ enum RetCode {
     ORDER_DELIVERY_NOT_EXIST = 50017; // 订单交付信息不存在
     ORDER_TX_CODE_NOT_EXIST = 50018; // 订单交易号不存在
     SKU_PRICE_VERSION_NOT_EXIST = 50019; // 商品价格版本不存在或不符合规则
+    ORDER_PAY_COMPLETED = 50020; // 订单支付完成
+    ORDER_EXPIRE = 50021; // 订单过期
+    ORDER_STATE_INVALID = 50022; // 订单无效
 }
 
 enum OperationType {
@@ -120,6 +130,7 @@ enum OrderPayStateType {
     PAY_RUN = 1; // 正在支付中
     PAY_SUCCESS = 2; // 支付成功
     PAY_FAILED = 3; // 支付失败
+    PAY_CANCEL = 4; // 支付取消
 }
 
 message OperationMeta {
@@ -138,6 +149,22 @@ message OrderStateEntry {
 message UpdateOrderStateRequest {
     repeated OrderStateEntry entry_list = 1;
     OperationMeta operation_meta = 2;
+}
+
+message CheckOrderStateRequest {
+    repeated string order_codes = 1;
+}
+
+message OrderState {
+    string order_code = 1;
+    OrderPayStateType pay_state = 2;
+    OrderStateType state = 3;
+    bool is_exist = 4;
+}
+
+message CheckOrderStateResponse {
+    CommonResponse common = 1;
+    repeated OrderState list = 2;
 }
 
 message OrderTradeNoticeRequest {

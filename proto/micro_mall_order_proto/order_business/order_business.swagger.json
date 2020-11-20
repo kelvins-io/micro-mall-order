@@ -11,6 +11,39 @@
     "application/json"
   ],
   "paths": {
+    "/v1/order/check": {
+      "post": {
+        "summary": "订单状态检查",
+        "operationId": "OrderBusinessService_CheckOrderState",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/order_businessCheckOrderStateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/order_businessCheckOrderStateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OrderBusinessService"
+        ]
+      }
+    },
     "/v1/order/code": {
       "get": {
         "summary": "生成唯一订单事务号",
@@ -256,6 +289,31 @@
         }
       }
     },
+    "order_businessCheckOrderStateRequest": {
+      "type": "object",
+      "properties": {
+        "order_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "order_businessCheckOrderStateResponse": {
+      "type": "object",
+      "properties": {
+        "common": {
+          "$ref": "#/definitions/order_businessCommonResponse"
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order_businessOrderState"
+          }
+        }
+      }
+    },
     "order_businessCoinType": {
       "type": "string",
       "enum": [
@@ -431,7 +489,8 @@
         "PAY_READY",
         "PAY_RUN",
         "PAY_SUCCESS",
-        "PAY_FAILED"
+        "PAY_FAILED",
+        "PAY_CANCEL"
       ],
       "default": "PAY_READY"
     },
@@ -477,6 +536,24 @@
           "items": {
             "$ref": "#/definitions/order_businessOrderGoods"
           }
+        }
+      }
+    },
+    "order_businessOrderState": {
+      "type": "object",
+      "properties": {
+        "order_code": {
+          "type": "string"
+        },
+        "pay_state": {
+          "$ref": "#/definitions/order_businessOrderPayStateType"
+        },
+        "state": {
+          "$ref": "#/definitions/order_businessOrderStateType"
+        },
+        "is_exist": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },
@@ -549,7 +626,10 @@
         "ORDER_TX_CODE_EMPTY",
         "ORDER_DELIVERY_NOT_EXIST",
         "ORDER_TX_CODE_NOT_EXIST",
-        "SKU_PRICE_VERSION_NOT_EXIST"
+        "SKU_PRICE_VERSION_NOT_EXIST",
+        "ORDER_PAY_COMPLETED",
+        "ORDER_EXPIRE",
+        "ORDER_STATE_INVALID"
       ],
       "default": "SUCCESS"
     },

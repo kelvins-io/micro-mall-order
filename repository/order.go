@@ -18,10 +18,17 @@ func GetOrderExist(txCode string) (*mysql.Order, error) {
 	return &model, err
 }
 
-func GetOrderListByTxCode(txCode string) ([]mysql.Order, error) {
+func FindOrderList(sqlSelect string, orderCode []string) ([]mysql.Order, error) {
 	var result = make([]mysql.Order, 0)
 	var err error
-	err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Where("tx_code = ?", txCode).Find(&result)
+	err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Select(sqlSelect).In("order_code", orderCode).Find(&result)
+	return result, err
+}
+
+func GetOrderListByTxCode(where interface{}) ([]mysql.Order, error) {
+	var result = make([]mysql.Order, 0)
+	var err error
+	err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Where(where).Find(&result)
 	return result, err
 }
 

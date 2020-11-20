@@ -3,9 +3,10 @@ package mysql
 import "time"
 
 const (
-	TableOrder    = "order"
-	TableOrderSku = "order_sku"
-	TableConfigKv = "config_kv_store"
+	TableOrder          = "order"
+	TableOrderSku       = "order_sku"
+	TableOrderSceneShop = "order_scene_shop"
+	TableConfigKv       = "config_kv_store"
 )
 
 type Order struct {
@@ -18,18 +19,41 @@ type Order struct {
 	ClientIp            string    `xorm:"comment('客户端IP') CHAR(16)"`
 	DeviceCode          string    `xorm:"comment('客户端设备code') VARCHAR(512)"`
 	ShopId              int64     `xorm:"not null comment('门店ID') index BIGINT"`
-	ShopName            string    `xorm:"not null comment('门店名称') index VARCHAR(255)"`
-	ShopAreaCode        string    `xorm:"comment('门店区域编号') VARCHAR(255)"`
-	ShopAddress         string    `xorm:"comment('门店地址') TEXT"`
 	State               int       `xorm:"not null default 0 comment('订单状态，0-有效，1-锁定中，2-无效') TINYINT"`
 	PayExpire           time.Time `xorm:"not null comment('支付有效期，默认30分钟内有效') DATETIME"`
-	PayState            int       `xorm:"not null default 0 comment('支付状态，0-未支付，1-支付中，2-支付失败，3-已支付') TINYINT"`
+	PayState            int       `xorm:"not null default 0 comment('支付状态，0-未支付，1-支付中，2-支付失败，3-已支付，4-支付过期取消') TINYINT"`
 	Amount              int       `xorm:"comment('订单关联商品数量') INT"`
 	TotalAmount         string    `xorm:"not null default 0.0000000000000000 comment('订单总金额') DECIMAL(32,16)"`
 	CoinType            int       `xorm:"default 0 comment(' 订单币种，0-CNY，1-USD') TINYINT"`
 	LogisticsDeliveryId int       `xorm:"comment('物流投递ID') INT"`
 	CreateTime          time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
 	UpdateTime          time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
+	InventoryVerify     int       `xorm:"default 0 comment('库存核实，0-未核实，1-核实') TINYINT"`
+}
+
+type OrderEstimate struct {
+	Id           int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
+	EstimateCode string    `xorm:"not null comment('评论code') unique(estimate_code_shop_id) CHAR(40)"`
+	SkuCode      string    `xorm:"comment('商品sku') CHAR(40)"`
+	OrderCode    string    `xorm:"comment('订单code') index CHAR(40)"`
+	Uid          int64     `xorm:"comment('用户uid') index BIGINT"`
+	ShopId       int64     `xorm:"comment('店铺ID') unique(estimate_code_shop_id) index BIGINT"`
+	Content      string    `xorm:"comment('内容') TEXT"`
+	Star         int       `xorm:"comment('星级') INT"`
+	State        int       `xorm:"default 0 comment('状态，0-有效') TINYINT"`
+	CreateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
+	UpdateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
+}
+
+type OrderSceneShop struct {
+	Id           int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
+	OrderCode    string    `xorm:"comment('订单code') CHAR(40)"`
+	ShopId       int64     `xorm:"comment('店铺ID') BIGINT"`
+	ShopName     string    `xorm:"comment('店铺名') VARCHAR(512)"`
+	ShopAreaCode string    `xorm:"comment('店铺区域code') VARCHAR(255)"`
+	ShopAddress  string    `xorm:"comment('店铺地址') TEXT"`
+	CreateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
+	UpdateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('更新时间') DATETIME"`
 }
 
 type OrderSku struct {
@@ -42,16 +66,4 @@ type OrderSku struct {
 	Name       string    `xorm:"comment('商品名称') index VARCHAR(255)"`
 	CreateTime time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
 	UpdateTime time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('修改时间') DATETIME"`
-}
-
-type ConfigKvStore struct {
-	Id          int       `xorm:"not null pk autoincr comment('主键') INT"`
-	ConfigKey   string    `xorm:"not null comment('配置键') unique VARCHAR(255)"`
-	ConfigValue string    `xorm:"not null comment('配置值') VARCHAR(255)"`
-	Prefix      string    `xorm:"not null comment('配置前缀') VARCHAR(255)"`
-	Suffix      string    `xorm:"not null comment('配置后缀') VARCHAR(255)"`
-	Status      int       `xorm:"not null default 1 comment('是否启用 1是 0否') TINYINT"`
-	IsDelete    int       `xorm:"not null default 0 comment('是否删除 1是 0否') TINYINT"`
-	CreateTime  time.Time `xorm:"default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
-	UpdateTime  time.Time `xorm:"default CURRENT_TIMESTAMP comment('更新时间') DATETIME"`
 }

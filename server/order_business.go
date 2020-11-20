@@ -55,8 +55,19 @@ func (o *OrderServer) GetOrderDetail(ctx context.Context, req *order_business.Ge
 	}
 	rsp, retCode := service.GetOrderDetail(ctx, req)
 	if retCode != code.Success {
-		result.Common.Code = order_business.RetCode_ERROR
-		result.Common.Msg = errcode.GetErrMsg(code.ErrorServer)
+		switch retCode {
+		case code.OrderExpire:
+			result.Common.Code = order_business.RetCode_ORDER_EXPIRE
+		case code.OrderPayCompleted:
+			result.Common.Code = order_business.RetCode_ORDER_PAY_COMPLETED
+		case code.OrderStateInvalid:
+			result.Common.Code = order_business.RetCode_ORDER_STATE_INVALID
+		case code.OrderStateLocked:
+			result.Common.Code = order_business.RetCode_ORDER_STATE_LOCKED
+		default:
+			result.Common.Code = order_business.RetCode_ERROR
+		}
+		result.Common.Msg = errcode.GetErrMsg(retCode)
 		return &result, nil
 	}
 	result.Account = rsp.UserCode
@@ -191,5 +202,21 @@ func (o *OrderServer) OrderTradeNotice(ctx context.Context, req *order_business.
 	case code.ErrorServer:
 		result.Common.Code = order_business.RetCode_ERROR
 	}
+	return result, nil
+}
+
+func (o *OrderServer) CheckOrderState(ctx context.Context, req *order_business.CheckOrderStateRequest) (*order_business.CheckOrderStateResponse, error) {
+	result := &order_business.CheckOrderStateResponse{
+		Common: &order_business.CommonResponse{
+			Code: order_business.RetCode_SUCCESS,
+		},
+		List: nil,
+	}
+	stateList, retCode := service.CheckOrderState(ctx, req)
+	if retCode != code.Success {
+		result.Common.Code = order_business.RetCode_ERROR
+		return result, nil
+	}
+	result.List = stateList
 	return result, nil
 }
