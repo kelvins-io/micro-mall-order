@@ -36,8 +36,31 @@ func CheckOrderState(ctx context.Context, req *order_business.CheckOrderStateReq
 			result = append(result, orderState)
 			continue
 		}
-		orderState.PayState = order_business.OrderPayStateType(orderCodeToOrder[req.OrderCodes[i]].PayState)
-		orderState.State = order_business.OrderStateType(orderCodeToOrder[req.OrderCodes[i]].State)
+		orderState.IsExist = true
+		payState := order_business.OrderPayStateType_PAY_READY
+		switch orderCodeToOrder[req.OrderCodes[i]].PayState {
+		case 0:
+			payState = order_business.OrderPayStateType_PAY_READY
+		case 1:
+			payState = order_business.OrderPayStateType_PAY_RUN
+		case 2:
+			payState = order_business.OrderPayStateType_PAY_FAILED
+		case 3:
+			payState = order_business.OrderPayStateType_PAY_SUCCESS
+		case 4:
+			payState = order_business.OrderPayStateType_PAY_CANCEL
+		}
+		state := order_business.OrderStateType_ORDER_EFFECTIVE
+		switch orderCodeToOrder[req.OrderCodes[i]].State {
+		case 0:
+			state = order_business.OrderStateType_ORDER_EFFECTIVE
+		case 1:
+			state = order_business.OrderStateType_ORDER_LOCKED
+		case 2:
+			state = order_business.OrderStateType_ORDER_INVALID
+		}
+		orderState.PayState = payState
+		orderState.State = state
 		result = append(result, orderState)
 	}
 	return result, code.Success

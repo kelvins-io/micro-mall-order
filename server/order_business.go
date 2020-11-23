@@ -212,11 +212,38 @@ func (o *OrderServer) CheckOrderState(ctx context.Context, req *order_business.C
 		},
 		List: nil,
 	}
+	if len(req.GetOrderCodes()) > 500 {
+		result.Common.Code = order_business.RetCode_REQUEST_DATA_TOO_MUCH
+		return result, nil
+	}
 	stateList, retCode := service.CheckOrderState(ctx, req)
 	if retCode != code.Success {
 		result.Common.Code = order_business.RetCode_ERROR
 		return result, nil
 	}
 	result.List = stateList
+	return result, nil
+}
+
+func (o *OrderServer) FindOrderList(ctx context.Context, req *order_business.FindOrderListRequest) (*order_business.FindOrderListResponse, error) {
+	result := &order_business.FindOrderListResponse{
+		Common: &order_business.CommonResponse{
+			Code: order_business.RetCode_SUCCESS,
+		},
+		List:  nil,
+		Total: 0,
+	}
+	list, total, retCode := service.FindOrderList(ctx, req)
+	if retCode != code.Success {
+		switch retCode {
+		case code.ErrRequestDataFormat:
+			result.Common.Code = order_business.RetCode_ERR_REQUEST_DATA_FORMAT
+		default:
+			result.Common.Code = order_business.RetCode_ERROR
+		}
+		return result, nil
+	}
+	result.Total = total
+	result.List = list
 	return result, nil
 }

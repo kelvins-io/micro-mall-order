@@ -3,6 +3,7 @@ package repository
 import (
 	"gitee.com/cristiane/micro-mall-order/model/mysql"
 	"gitee.com/kelvins-io/kelvins"
+	"time"
 	"xorm.io/xorm"
 )
 
@@ -11,11 +12,17 @@ func CreateOrder(tx *xorm.Session, models []mysql.Order) (err error) {
 	return
 }
 
-func GetOrderExist(txCode string) (*mysql.Order, error) {
+func GetOrderExist(txCode string) (bool, error) {
 	var model mysql.Order
 	var err error
 	_, err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Select("tx_code,order_code").Where("tx_code = ?", txCode).Get(&model)
-	return &model, err
+	if err != nil {
+		return false, err
+	}
+	if model.TxCode != "" && model.OrderCode != "" {
+		return true, nil
+	}
+	return false, nil
 }
 
 func FindOrderList(sqlSelect string, orderCode []string) ([]mysql.Order, error) {
@@ -25,10 +32,36 @@ func FindOrderList(sqlSelect string, orderCode []string) ([]mysql.Order, error) 
 	return result, err
 }
 
-func GetOrderListByTxCode(where interface{}) ([]mysql.Order, error) {
+func FindOrderListByShopId(sqlSelect string, shopIdList []int64, where interface{}, startTime, endTime time.Time, pageSize, pageNum int32) ([]mysql.Order, int64, error) {
 	var result = make([]mysql.Order, 0)
 	var err error
-	err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Where(where).Find(&result)
+	var total int64
+	session := kelvins.XORM_DBEngine.Table(mysql.TableOrder).Select(sqlSelect)
+	if len(shopIdList) > 0 {
+		session = session.In("shop_id", shopIdList)
+	}
+	if where != nil {
+		session = session.Where(where)
+	}
+	if startTime.Year() > 1999 {
+		session = session.Where("create_time >= ?", startTime)
+	}
+	if endTime.Year() > 1999 {
+		session = session.Where("create_time < ?", endTime)
+	}
+	if pageSize > 0 && pageNum > 0 {
+		session = session.Limit(int(pageSize), int((pageNum-1)*pageSize))
+	}
+	session = session.Desc("create_time")
+	err = session.Find(&result)
+	total = int64(len(result))
+	return result, total, err
+}
+
+func GetOrderList(selSelect string, where interface{}) ([]mysql.Order, error) {
+	var result = make([]mysql.Order, 0)
+	var err error
+	err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Select(selSelect).Where(where).Find(&result)
 	return result, err
 }
 

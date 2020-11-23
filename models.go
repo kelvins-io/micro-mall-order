@@ -18,7 +18,7 @@ type Order struct {
 	PayExpire           time.Time `xorm:"not null comment('支付有效期，默认30分钟内有效') DATETIME"`
 	PayState            int       `xorm:"not null default 0 comment('支付状态，0-未支付，1-支付中，2-支付失败，3-已支付，4-支付过期取消') TINYINT"`
 	Amount              int       `xorm:"comment('订单关联商品数量') INT"`
-	TotalAmount         string    `xorm:"not null default 0.0000000000000000 comment('订单总金额') DECIMAL(32,16)"`
+	Money               string    `xorm:"not null default 0.0000000000000000 comment('订单总金额') DECIMAL(32,16)"`
 	CoinType            int       `xorm:"default 0 comment(' 订单币种，0-CNY，1-USD') TINYINT"`
 	LogisticsDeliveryId int       `xorm:"comment('物流投递ID') INT"`
 	CreateTime          time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`

@@ -178,6 +178,68 @@
         ]
       }
     },
+    "/v1/order/list": {
+      "get": {
+        "summary": "获取订单",
+        "operationId": "OrderBusinessService_FindOrderList",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/order_businessFindOrderListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shop_id_list",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "time_meta.start_time",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "time_meta.end_time",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_meta.page_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "page_meta.page_size",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "OrderBusinessService"
+        ]
+      }
+    },
     "/v1/order/notice": {
       "post": {
         "summary": "订单支付通知",
@@ -375,6 +437,35 @@
         }
       }
     },
+    "order_businessFiltrateTimeMeta": {
+      "type": "object",
+      "properties": {
+        "start_time": {
+          "type": "string"
+        },
+        "end_time": {
+          "type": "string"
+        }
+      }
+    },
+    "order_businessFindOrderListResponse": {
+      "type": "object",
+      "properties": {
+        "common": {
+          "$ref": "#/definitions/order_businessCommonResponse"
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order_businessOrderListEntry"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "order_businessGenOrderTxCodeResponse": {
       "type": "object",
       "properties": {
@@ -483,13 +574,50 @@
         }
       }
     },
+    "order_businessOrderListEntry": {
+      "type": "object",
+      "properties": {
+        "order_code": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string",
+          "format": "int64"
+        },
+        "shop_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "description": {
+          "type": "string"
+        },
+        "client_ip": {
+          "type": "string"
+        },
+        "device_code": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/definitions/order_businessOrderStateType"
+        },
+        "pay_state": {
+          "$ref": "#/definitions/order_businessOrderPayStateType"
+        },
+        "money": {
+          "type": "string"
+        },
+        "create_time": {
+          "type": "string"
+        }
+      }
+    },
     "order_businessOrderPayStateType": {
       "type": "string",
       "enum": [
         "PAY_READY",
         "PAY_RUN",
-        "PAY_SUCCESS",
         "PAY_FAILED",
+        "PAY_SUCCESS",
         "PAY_CANCEL"
       ],
       "default": "PAY_READY"
@@ -575,8 +703,8 @@
       "type": "string",
       "enum": [
         "ORDER_EFFECTIVE",
-        "ORDER_INVALID",
-        "ORDER_LOCKED"
+        "ORDER_LOCKED",
+        "ORDER_INVALID"
       ],
       "default": "ORDER_EFFECTIVE"
     },
@@ -603,11 +731,25 @@
         }
       }
     },
+    "order_businessPageMeta": {
+      "type": "object",
+      "properties": {
+        "page_num": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "page_size": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
     "order_businessRetCode": {
       "type": "string",
       "enum": [
         "SUCCESS",
         "ERROR",
+        "ERR_REQUEST_DATA_FORMAT",
         "USER_NOT_EXIST",
         "USER_EXIST",
         "MERCHANT_NOT_EXIST",
@@ -629,7 +771,8 @@
         "SKU_PRICE_VERSION_NOT_EXIST",
         "ORDER_PAY_COMPLETED",
         "ORDER_EXPIRE",
-        "ORDER_STATE_INVALID"
+        "ORDER_STATE_INVALID",
+        "REQUEST_DATA_TOO_MUCH"
       ],
       "default": "SUCCESS"
     },

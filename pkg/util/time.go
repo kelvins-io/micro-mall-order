@@ -98,25 +98,12 @@ func ParseTimeOfCustom(unixT int64, layStr string) string {
 	return time.Unix(unixT, 0).Format(layStr)
 }
 
-func GetCurrentDay(d time.Time, hour, min int) time.Time {
-	return time.Date(d.Year(), d.Month(), d.Day(), hour, min, 0, 0, d.Location())
+func GenTimeOfStr(str string) (time.Time, error) {
+	return time.Parse(ctLayoutStr, str)
 }
 
-func GetActivityBeginTime(beginTimeEv string) (int64, error) {
-	beginTsli := strings.Split(beginTimeEv, ":")
-	beginHour := beginTsli[0]
-	beginHourInt, err := strconv.Atoi(beginHour)
-	if err != nil {
-		return 0, err
-	}
-	beginMin := beginTsli[1]
-	beginMinInt, err := strconv.Atoi(beginMin)
-	if err != nil {
-		return 0, err
-	}
-	beginTime := GetCurrentDay(time.Now(), beginHourInt, beginMinInt)
-
-	return beginTime.Unix(), nil
+func GetCurrentDay(d time.Time, hour, min int) time.Time {
+	return time.Date(d.Year(), d.Month(), d.Day(), hour, min, 0, 0, d.Location())
 }
 
 func GetExpireTimeDay(expireUnixT, nowUnix int64) int32 {
