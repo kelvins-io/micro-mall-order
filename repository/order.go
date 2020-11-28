@@ -25,21 +25,18 @@ func GetOrderExist(txCode string) (bool, error) {
 	return false, nil
 }
 
-func FindOrderList(sqlSelect string, orderCode []string) ([]mysql.Order, error) {
+func FindOrderListByOrderCode(sqlSelect string, orderCode []string) ([]mysql.Order, error) {
 	var result = make([]mysql.Order, 0)
 	var err error
 	err = kelvins.XORM_DBEngine.Table(mysql.TableOrder).Select(sqlSelect).In("order_code", orderCode).Find(&result)
 	return result, err
 }
 
-func FindOrderListByShopId(sqlSelect string, shopIdList []int64, where interface{}, startTime, endTime time.Time, pageSize, pageNum int32) ([]mysql.Order, int64, error) {
+func FindOrderListByTime(sqlSelect string, where interface{}, startTime, endTime time.Time, pageSize, pageNum int32) ([]mysql.Order, int64, error) {
 	var result = make([]mysql.Order, 0)
 	var err error
 	var total int64
 	session := kelvins.XORM_DBEngine.Table(mysql.TableOrder).Select(sqlSelect)
-	if len(shopIdList) > 0 {
-		session = session.In("shop_id", shopIdList)
-	}
 	if where != nil {
 		session = session.Where(where)
 	}

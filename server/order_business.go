@@ -247,3 +247,24 @@ func (o *OrderServer) FindOrderList(ctx context.Context, req *order_business.Fin
 	result.List = list
 	return result, nil
 }
+
+func (o *OrderServer) InspectShopOrder(ctx context.Context, req *order_business.InspectShopOrderRequest) (*order_business.InspectShopOrderResponse, error) {
+	result := &order_business.InspectShopOrderResponse{Common: &order_business.CommonResponse{
+		Code: order_business.RetCode_SUCCESS,
+		Msg:  "",
+	}}
+	retCode := service.InspectShopOrder(ctx, req)
+	if retCode != code.Success {
+		switch retCode {
+		case code.OrderNotExist:
+			result.Common.Code = order_business.RetCode_ORDER_NOT_EXIST
+		case code.OrderStateInvalid:
+			result.Common.Code = order_business.RetCode_ORDER_STATE_INVALID
+		default:
+			result.Common.Code = order_business.RetCode_ERROR
+		}
+		result.Common.Msg = errcode.GetErrMsg(retCode)
+		return result, nil
+	}
+	return result, nil
+}

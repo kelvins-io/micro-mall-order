@@ -66,6 +66,12 @@ service OrderBusinessService {
             get: "/v1/order/list"
         };
     }
+    // 店铺订单存在检查
+    rpc InspectShopOrder(InspectShopOrderRequest) returns (InspectShopOrderResponse) {
+        option (google.api.http) = {
+            get: "/v1/order/shop/inspect"
+        };
+    }
 }
 
 enum RetCode {
@@ -185,8 +191,19 @@ message CheckOrderStateResponse {
     repeated OrderState list = 2;
 }
 
+message InspectShopOrderRequest {
+    int64 uid = 1;
+    int64 shop_id = 2;
+    string order_code = 3;
+}
+
+message InspectShopOrderResponse {
+    CommonResponse common = 1;
+}
+
 message FindOrderListRequest {
-    repeated int64 shop_id_list = 1; // 店铺ID为0则查找全部订单
+    repeated int64 shop_id_list = 1; // 店铺ID，用户ID不能都为空
+    repeated int64 uid_list = 2; // 用户ID，店铺ID不能都为空
     FiltrateTimeMeta time_meta = 198; // 时间参数
     PageMeta page_meta = 199; // 分页
 }

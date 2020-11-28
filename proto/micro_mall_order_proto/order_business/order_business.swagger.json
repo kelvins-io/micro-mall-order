@@ -209,6 +209,17 @@
             "collectionFormat": "multi"
           },
           {
+            "name": "uid_list",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          },
+          {
             "name": "time_meta.start_time",
             "in": "query",
             "required": false,
@@ -266,6 +277,51 @@
             "schema": {
               "$ref": "#/definitions/order_businessOrderTradeNoticeRequest"
             }
+          }
+        ],
+        "tags": [
+          "OrderBusinessService"
+        ]
+      }
+    },
+    "/v1/order/shop/inspect": {
+      "get": {
+        "summary": "店铺订单存在检查",
+        "operationId": "OrderBusinessService_InspectShopOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/order_businessInspectShopOrderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "shop_id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "order_code",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -508,6 +564,14 @@
           "items": {
             "$ref": "#/definitions/order_businessOrderSku"
           }
+        }
+      }
+    },
+    "order_businessInspectShopOrderResponse": {
+      "type": "object",
+      "properties": {
+        "common": {
+          "$ref": "#/definitions/order_businessCommonResponse"
         }
       }
     },

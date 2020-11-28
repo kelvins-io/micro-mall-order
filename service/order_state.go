@@ -15,7 +15,7 @@ const (
 
 func CheckOrderState(ctx context.Context, req *order_business.CheckOrderStateRequest) ([]*order_business.OrderState, int) {
 	result := make([]*order_business.OrderState, 0)
-	orderList, err := repository.FindOrderList(sqlSelectCheckOrderState, req.GetOrderCodes())
+	orderList, err := repository.FindOrderListByOrderCode(sqlSelectCheckOrderState, req.GetOrderCodes())
 	if err != nil {
 		kelvins.ErrLogger.Errorf(ctx, "FindOrderList err: %v, orderCode: %v", err, req.GetOrderCodes())
 		return result, code.ErrorServer
@@ -64,4 +64,36 @@ func CheckOrderState(ctx context.Context, req *order_business.CheckOrderStateReq
 		result = append(result, orderState)
 	}
 	return result, code.Success
+}
+
+func InspectShopOrder(ctx context.Context, req *order_business.InspectShopOrderRequest) (retCode int) {
+	retCode = code.Success
+	where := map[string]interface{}{
+		"uid":        req.Uid,
+		"shop_id":    req.ShopId,
+		"order_code": req.OrderCode,
+	}
+	orderList, err := repository.GetOrderList("id,state,pay_state", where)
+	if err != nil {
+		kelvins.ErrLogger.Errorf(ctx, "GetOrderList err: %v,where: %+v", err, where)
+		retCode = code.ErrorServer
+		return
+	}
+	if len(orderList) == 0 {
+		retCode = code.OrderNotExist
+		return
+	}
+	if orderList[0].Id <= 0 {
+		retCode = code.OrderNotExist
+		return
+	}
+	if orderList[0].State != 0 {
+		retCode = code.OrderStateInvalid
+		return
+	}
+	if orderList[0].PayState != 3 {
+		retCode = code.OrderStateInvalid
+		return
+	}
+	return
 }

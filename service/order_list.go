@@ -31,7 +31,11 @@ func FindOrderList(ctx context.Context, req *order_business.FindOrderListRequest
 		return
 	}
 	endTime = endTime.UTC()
-	list, total, err := repository.FindOrderListByShopId(sqlSelectFindOrderList, req.GetShopIdList(), nil, startTime, endTime, req.GetPageMeta().GetPageSize(), req.GetPageMeta().GetPageNum())
+	where := map[string]interface{}{
+		"shop_id": req.GetShopIdList(),
+		"uid":     req.GetUidList(),
+	}
+	list, total, err := repository.FindOrderListByTime(sqlSelectFindOrderList, where, startTime, endTime, req.GetPageMeta().GetPageSize(), req.GetPageMeta().GetPageNum())
 	if err != nil {
 		kelvins.ErrLogger.Errorf(ctx, "FindOrderListByShopId err: %v, shopId: %v", err, req.GetShopIdList())
 		retCode = code.ErrorServer
