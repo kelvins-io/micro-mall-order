@@ -3881,7 +3881,7 @@ func (c *orderBusinessServiceClient) InspectShopOrder(ctx context.Context, in *I
 	return out, nil
 }
 
-// OrderBusinessServiceServer is the server API for OrderBusinessService service.
+// OrderBusinessServiceServer is the internal API for OrderBusinessService service.
 type OrderBusinessServiceServer interface {
 	// 生成唯一订单事务号
 	GenOrderTxCode(context.Context, *GenOrderTxCodeRequest) (*GenOrderTxCodeResponse, error)

@@ -2258,7 +2258,7 @@ func (c *shopBusinessServiceClient) GetShopMajorInfo(ctx context.Context, in *Ge
 	return out, nil
 }
 
-// ShopBusinessServiceServer is the server API for ShopBusinessService service.
+// ShopBusinessServiceServer is the internal API for ShopBusinessService service.
 type ShopBusinessServiceServer interface {
 	// 提交店铺申请材料
 	ShopApply(context.Context, *ShopApplyRequest) (*ShopApplyResponse, error)

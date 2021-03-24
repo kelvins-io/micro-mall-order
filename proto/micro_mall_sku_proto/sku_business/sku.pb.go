@@ -2833,7 +2833,7 @@ func (c *skuBusinessServiceClient) ConfirmSkuInventory(ctx context.Context, in *
 	return out, nil
 }
 
-// SkuBusinessServiceServer is the server API for SkuBusinessService service.
+// SkuBusinessServiceServer is the internal API for SkuBusinessService service.
 type SkuBusinessServiceServer interface {
 	// 上架商品
 	PutAwaySku(context.Context, *PutAwaySkuRequest) (*PutAwaySkuResponse, error)
