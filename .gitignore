@@ -12,3 +12,5 @@
 *.out
 vendor/
 logs/
+etc/app.ini
+micro-mall-order
