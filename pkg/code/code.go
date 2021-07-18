@@ -32,6 +32,7 @@ const (
 	RequestDataTooMuch       = 29000029
 	ErrRequestDataFormat     = 29000030
 	UserDeliveryInfoNotExist = 29000031
+	UserStateNotVerify       = 29000032
 )
 
 var ErrMap = make(map[int]string)
@@ -67,6 +68,7 @@ func init() {
 		RequestDataTooMuch:       "请求数据过多",
 		ErrRequestDataFormat:     "请求数据格式不正确",
 		UserDeliveryInfoNotExist: "用户物流信息不存在",
+		UserStateNotVerify:       "用户身份未验证或审核或被锁定",
 	}
 	errcode.RegisterErrMsgDict(dict)
 	for key, _ := range dict {

@@ -38,6 +38,8 @@ func (o *OrderServer) CreateOrder(ctx context.Context, req *order_business.Creat
 			result.Common.Code = order_business.RetCode_SKU_AMOUNT_NOT_ENOUGH
 		} else if retCode == code.TransactionFailed {
 			result.Common.Code = order_business.RetCode_TRANSACTION_FAILED
+		} else if retCode == code.UserStateNotVerify {
+			result.Common.Code = order_business.RetCode_USER_STATE_NOT_VERIFY
 		} else {
 			result.Common.Code = order_business.RetCode_ERROR
 		}

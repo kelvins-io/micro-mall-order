@@ -414,10 +414,14 @@ func tradeOrderCheckUserIdentity(ctx context.Context, req *order_business.Create
 	}
 	if rsp.Common.Code != users.RetCode_SUCCESS {
 		kelvins.ErrLogger.Errorf(ctx, "CheckUserState %v,err: %v, req: %+v, rsp: %+v", serverName, err, r, rsp)
-		if rsp.Common.Code == users.RetCode_USER_NOT_EXIST {
+		switch rsp.Common.Code {
+		case users.RetCode_USER_NOT_EXIST:
 			return code.UserNotExist
+		case users.RetCode_USER_STATE_NOT_VERIFY:
+			return code.UserStateNotVerify
+		default:
+			return code.ErrorServer
 		}
-		return code.ErrorServer
 	}
 	return code.Success
 }

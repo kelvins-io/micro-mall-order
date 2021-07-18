@@ -107,6 +107,12 @@ service UsersService {
             get: "/v1/user/info/account_id"
         };
     }
+    // 列表所有用户
+    rpc ListUserInfo(ListUserInfoRequest) returns (ListUserInfoResponse) {
+        option (google.api.http) = {
+            get: "/v1/user/info/list"
+        };
+    }
 }
 
 service MerchantsService {
@@ -155,6 +161,10 @@ enum RetCode {
     TRANSACTION_FAILED = 50011;
     ACCOUNT_LOCK = 50012;
     ACCOUNT_INVALID = 50013;
+    USER_CHARGE_RUN = 50014;
+    USER_CHARGE_SUCCESS = 50015;
+    USER_CHARGE_TRADE_NO_EMPTY = 50016;
+    USER_STATE_NOT_VERIFY = 50017;
 }
 
 enum OperationType {
@@ -258,6 +268,7 @@ message UserAccountChargeRequest {
     AccountType account_type = 2; // 账户类型
     CoinType coin_type = 3; // 币种
     string amount = 4; // 数量
+    string out_trade_no = 5; // 外部交易号
 
     OperationMeta op_meta = 199;
 }
@@ -498,9 +509,25 @@ message MerchantsMaterialAuditResponse {
     bool is_over = 5;
 }
 
+message ListUserInfoRequest {
+    PageMeta page_meta = 1;
+    string token = 2; // 因为该接口可以批量获取用户，因此需要token
+}
+
+message ListUserInfoResponse {
+    CommonResponse common = 1;
+    repeated MobilePhone user_info_list = 2;
+    reserved 3;
+}
+
 message CommonResponse {
     RetCode code =1;
     string msg =2;
+}
+
+message PageMeta {
+    int32 page_num = 1;
+    int32 page_size = 2;
 }
 
 message OperationMeta {
