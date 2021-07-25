@@ -171,6 +171,13 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "uid",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -538,9 +545,6 @@
         "common": {
           "$ref": "#/definitions/order_businessCommonResponse"
         },
-        "account": {
-          "type": "string"
-        },
         "coin_type": {
           "$ref": "#/definitions/order_businessCoinType"
         },
@@ -835,7 +839,8 @@
         "ORDER_EXPIRE",
         "ORDER_STATE_INVALID",
         "REQUEST_DATA_TOO_MUCH",
-        "USER_STATE_NOT_VERIFY"
+        "USER_STATE_NOT_VERIFY",
+        "ORDER_PAY_ING"
       ],
       "default": "SUCCESS"
     },
@@ -845,20 +850,15 @@
         "order_code": {
           "type": "string"
         },
-        "merchant": {
-          "type": "string"
-        },
-        "time_expire": {
-          "type": "string"
-        },
-        "notify_url": {
-          "type": "string"
+        "shop_id": {
+          "type": "string",
+          "format": "int64"
         },
         "description": {
           "type": "string"
         },
-        "detail": {
-          "$ref": "#/definitions/order_businessTradeGoodsDetail"
+        "money": {
+          "type": "string"
         }
       }
     },
@@ -880,14 +880,6 @@
         }
       },
       "title": "门店信息"
-    },
-    "order_businessTradeGoodsDetail": {
-      "type": "object",
-      "properties": {
-        "money": {
-          "type": "string"
-        }
-      }
     },
     "order_businessUpdateOrderStateRequest": {
       "type": "object",

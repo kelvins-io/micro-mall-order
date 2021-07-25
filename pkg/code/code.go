@@ -33,6 +33,7 @@ const (
 	ErrRequestDataFormat     = 29000030
 	UserDeliveryInfoNotExist = 29000031
 	UserStateNotVerify       = 29000032
+	OrderPayIng              = 29000033
 )
 
 var ErrMap = make(map[int]string)
@@ -63,8 +64,9 @@ func init() {
 		OrderTxCodeNotExist:      "订单交易号不存在",
 		SkuPriceVersionNotExist:  "商品价格版本不存在或不符合规则",
 		OrderPayCompleted:        "订单支付完成",
+		OrderPayIng:              "订单正在支付中",
 		OrderExpire:              "订单过期",
-		OrderStateInvalid:        "订单无效",
+		OrderStateInvalid:        "订单无效或被锁定",
 		RequestDataTooMuch:       "请求数据过多",
 		ErrRequestDataFormat:     "请求数据格式不正确",
 		UserDeliveryInfoNotExist: "用户物流信息不存在",

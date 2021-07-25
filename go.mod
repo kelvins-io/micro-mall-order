@@ -17,7 +17,6 @@ require (
 	go.elastic.co/apm/module/apmgorm v1.9.0 // indirect
 	go.elastic.co/apm/module/apmgrpc v1.9.0 // indirect
 	go.elastic.co/apm/module/apmredigo v1.9.0 // indirect
-	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	google.golang.org/grpc v1.32.0
 	google.golang.org/protobuf v1.25.0
 	xorm.io/reverse v0.0.0-20200618084234-d29e5a0fd3ea // indirect

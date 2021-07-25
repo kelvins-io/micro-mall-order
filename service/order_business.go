@@ -2,23 +2,18 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"gitee.com/cristiane/micro-mall-order/model/args"
 	"gitee.com/cristiane/micro-mall-order/model/mysql"
 	"gitee.com/cristiane/micro-mall-order/pkg/code"
 	"gitee.com/cristiane/micro-mall-order/pkg/util"
-	"gitee.com/cristiane/micro-mall-order/pkg/util/goroutine"
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_order_proto/order_business"
-	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_shop_proto/shop_business"
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_sku_proto/sku_business"
-	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_users_proto/users"
 	"gitee.com/cristiane/micro-mall-order/repository"
 	"gitee.com/cristiane/micro-mall-order/vars"
 	"gitee.com/kelvins-io/common/errcode"
 	"gitee.com/kelvins-io/common/json"
 	"gitee.com/kelvins-io/kelvins"
 	"github.com/shopspring/decimal"
-	"golang.org/x/sync/errgroup"
 	"time"
 	"xorm.io/xorm"
 )
@@ -94,62 +89,11 @@ func createOrderCheckPriceVersion(ctx context.Context, req *order_business.Creat
 	return code.ErrorServer
 }
 
-func createOrderCheckUserDelivery(ctx context.Context, req *order_business.CreateOrderRequest) int {
-	if req.Uid <= 0 {
-		return code.UserNotExist
-	}
-	if req.OrderTxCode == "" {
-		return code.OrderTxCodeEmpty
-	}
-	if req.DeliveryInfo == nil || req.DeliveryInfo.UserDeliveryId <= 0 {
-		return code.OrderDeliveryNotExist
-	}
-	// 检查订单交付信息是否存在
-	serverName := args.RpcServiceMicroMallUsers
-	conn, err := util.GetGrpcClient(serverName)
-	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
-		return code.ErrorServer
-	}
-	defer conn.Close()
-	userClient := users.NewUsersServiceClient(conn)
-	userDeliveryInfoReq := &users.CheckUserDeliveryInfoRequest{
-		Uid:         req.Uid,
-		DeliveryIds: []int32{req.DeliveryInfo.UserDeliveryId},
-	}
-	userDeliveryInfoRsp, err := userClient.CheckUserDeliveryInfo(ctx, userDeliveryInfoReq)
-	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "CheckUserDeliveryInfo %v,err: %v", serverName, err)
-		return code.ErrorServer
-	}
-	if userDeliveryInfoRsp.Common.Code != users.RetCode_SUCCESS {
-		kelvins.ErrLogger.Errorf(ctx, "CheckUserDeliveryInfo %v,err: %v, rsp: %+v", serverName, err, userDeliveryInfoRsp)
-		switch userDeliveryInfoRsp.Common.Code {
-		case users.RetCode_USER_DELIVERY_INFO_NOT_EXIST:
-			return code.OrderDeliveryNotExist
-		default:
-			return code.ErrorServer
-		}
-	}
-
-	return code.Success
-}
-
 func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (result *args.CreateOrderRsp, retCode int) {
 	result = &args.CreateOrderRsp{
 		TxCode: "",
 	}
 	retCode = code.Success
-	// 参数检查
-	retCode = createOrderCheckUserDelivery(ctx, req)
-	if retCode != code.Success {
-		return
-	}
-	// 检查用户身份
-	retCode = tradeOrderCheckUserIdentity(ctx, req)
-	if retCode != code.Success {
-		return
-	}
 	// 检查是否重复下单
 	isExist, retCode := checkTradeOrderExist(ctx, req.OrderTxCode)
 	if retCode != code.Success {
@@ -394,38 +338,6 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 	return code.Success
 }
 
-func tradeOrderCheckUserIdentity(ctx context.Context, req *order_business.CreateOrderRequest) int {
-	// 检查用户
-	serverName := args.RpcServiceMicroMallUsers
-	conn, err := util.GetGrpcClient(serverName)
-	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
-		return code.ErrorServer
-	}
-	defer conn.Close()
-	client := users.NewUsersServiceClient(conn)
-	r := users.CheckUserStateRequest{
-		UidList: []int64{req.Uid},
-	}
-	rsp, err := client.CheckUserState(ctx, &r)
-	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "CheckUserState %v,err: %v", serverName, err)
-		return code.ErrorServer
-	}
-	if rsp.Common.Code != users.RetCode_SUCCESS {
-		kelvins.ErrLogger.Errorf(ctx, "CheckUserState %v,err: %v, req: %+v, rsp: %+v", serverName, err, r, rsp)
-		switch rsp.Common.Code {
-		case users.RetCode_USER_NOT_EXIST:
-			return code.UserNotExist
-		case users.RetCode_USER_STATE_NOT_VERIFY:
-			return code.UserStateNotVerify
-		default:
-			return code.ErrorServer
-		}
-	}
-	return code.Success
-}
-
 func tradeOrderEventNotice(ctx context.Context, req *order_business.CreateOrderRequest, txCode string) int {
 	// 触发订单事件
 	pushSer := NewPushNoticeService(vars.TradeOrderQueueServer, PushMsgTag{
@@ -462,7 +374,7 @@ func GetOrderDetail(ctx context.Context, req *order_business.GetOrderDetailReque
 	// 通过交易号获取订单详细
 	where := map[string]interface{}{
 		"tx_code": req.TxCode, // 订单事务号
-		"state":   0,          // 有效
+		"uid":     req.Uid,
 	}
 	orderList, err := repository.GetOrderList(sqlSelectOrderDetail, where)
 	if err != nil {
@@ -471,15 +383,28 @@ func GetOrderDetail(ctx context.Context, req *order_business.GetOrderDetailReque
 		return
 	}
 	if len(orderList) <= 0 {
+		retCode = code.OrderTxCodeNotExist
 		return
 	}
 	for i := 0; i < len(orderList); i++ {
-		if orderList[i].State != 0 {
+		if orderList[i].State == 1 {
+			retCode = code.OrderStateLocked
+			return
+		}
+		if orderList[i].State == 2 {
 			retCode = code.OrderStateInvalid
 			return
 		}
-		if orderList[i].PayState != 0 && orderList[i].PayState != 2 {
+		if orderList[i].PayState == 1 {
+			retCode = code.OrderPayIng
+			return
+		}
+		if orderList[i].PayState == 3 {
 			retCode = code.OrderPayCompleted
+			return
+		}
+		if orderList[i].PayState == 4 {
+			retCode = code.OrderExpire
 			return
 		}
 		if orderList[i].PayExpire.Sub(time.Now()) <= 0 {
@@ -487,114 +412,17 @@ func GetOrderDetail(ctx context.Context, req *order_business.GetOrderDetailReque
 			return
 		}
 	}
-	uid := orderList[0].Uid
 	result.CoinType = orderList[0].CoinType
-	accountId := ""
-	taskGroup, errCtx := errgroup.WithContext(ctx)
-	taskGroup.Go(func() error {
-		err := goroutine.CheckGoroutineErr(errCtx)
-		if err != nil {
-			return err
-		}
-		// 获取订单用户code
-		serverName := args.RpcServiceMicroMallUsers
-		conn, err := util.GetGrpcClient(serverName)
-		if err != nil {
-			kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
-			return err
-		}
-		defer conn.Close()
-		serve := users.NewUsersServiceClient(conn)
-		r := users.GetUserAccountIdRequest{
-			UidList: []int64{uid},
-		}
-		rsp, err := serve.GetUserAccountId(ctx, &r)
-		if err != nil {
-			kelvins.ErrLogger.Errorf(ctx, "GetUserAccountId %v,err: %v", serverName, err)
-			return err
-		}
-		if rsp.Common.Code == users.RetCode_ERROR {
-			kelvins.ErrLogger.Errorf(ctx, "GetUserAccountId %v, rsp: %v", serverName, rsp.Common.Msg)
-			retCode = code.ErrorServer
-			return fmt.Errorf("%v", code.ErrorServer)
-		}
-		if rsp.Common.Code == users.RetCode_USER_NOT_EXIST {
-			return fmt.Errorf("%v", code.UserNotExist)
-		}
-		if rsp.InfoList[0].AccountId == "" {
-			return fmt.Errorf("%v", code.UserNotExist)
-		}
-		accountId = rsp.InfoList[0].AccountId
-		return nil
-	})
-	// 获取店铺code
-	shopIdList := make([]int64, len(orderList))
-	for i := 0; i < len(orderList); i++ {
-		shopIdList[i] = orderList[i].ShopId
-	}
-	shopIdToShopCode := make(map[int64]string)
-	taskGroup.Go(func() error {
-		err := goroutine.CheckGoroutineErr(errCtx)
-		if err != nil {
-			return err
-		}
-		serverName := args.RpcServiceMicroMallShop
-		conn, err := util.GetGrpcClient(serverName)
-		if err != nil {
-			kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
-			retCode = code.ErrorServer
-			return err
-		}
-		defer conn.Close()
-		serveShop := shop_business.NewShopBusinessServiceClient(conn)
-		rShop := shop_business.GetShopMajorInfoRequest{
-			ShopIds: shopIdList,
-		}
-		rspShop, err := serveShop.GetShopMajorInfo(ctx, &rShop)
-		if err != nil {
-			kelvins.ErrLogger.Errorf(ctx, "GetShopMajorInfo %v,err: %v", serverName, err)
-			return fmt.Errorf("%v", code.ErrorServer)
-		}
-		if rspShop.Common.Code == shop_business.RetCode_ERROR {
-			kelvins.ErrLogger.Errorf(ctx, "GetShopMajorInfo %v,rspShop: %v", serverName, rspShop.Common.Code)
-			return fmt.Errorf("%v", code.ErrorServer)
-		}
-		if rspShop.Common.Code == shop_business.RetCode_SHOP_NOT_EXIST {
-			return fmt.Errorf("%v", code.ShopBusinessNotExist)
-		}
-		// 店铺ID和店铺code映射关系
-		for i := 0; i < len(rspShop.InfoList); i++ {
-			shopIdToShopCode[rspShop.InfoList[i].ShopId] = rspShop.InfoList[i].ShopCode
-		}
-		return nil
-	})
-	err = taskGroup.Wait()
-	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "GetOrderDetail taskGroup.Wait err: %v", err)
-		retCode = code.ErrorServer
-		return
-	}
-	if accountId == "" {
-		retCode = code.UserNotExist
-		return
-	}
-	if len(shopIdToShopCode) == 0 {
-		retCode = code.ShopBusinessNotExist
-		return
-	}
-	result.UserCode = accountId
 	result.List = make([]args.ShopOrderDetail, len(orderList))
-	for i := 0; i < len(orderList); i++ {
-		detail := args.ShopOrderDetail{
-			ShopCode:    shopIdToShopCode[orderList[i].ShopId],
-			OrderCode:   orderList[i].OrderCode,
-			TimeExpire:  util.ParseTimeOfStr(orderList[i].PayExpire.Unix()),
-			Description: orderList[i].Description,
-			Amount:      orderList[i].Money,
-			CoinType:    orderList[i].CoinType,
+	for i, v := range orderList {
+		result.List[i] = args.ShopOrderDetail{
+			ShopId:      v.ShopId,
+			OrderCode:   v.OrderCode,
+			Description: v.Description,
+			Amount:      v.Money,
 		}
-		result.List[i] = detail
 	}
+
 	return
 }
 

@@ -22,17 +22,13 @@ type CreateOrderRsp struct {
 }
 
 type ShopOrderDetail struct {
-	ShopCode    string `json:"shop_code"`
+	ShopId      int64  `json:"shop_id"`
 	OrderCode   string `json:"order_code"`
-	TimeExpire  string `json:"time_expire"`
 	Description string `json:"description"`
 	Amount      string `json:"amount"`
-	CoinType    int    `json:"coin_type"`
-	NotifyUrl   string `json:"notify_url"`
 }
 
 type OrderDetailRsp struct {
-	UserCode string            `json:"user_code"`
 	CoinType int               `json:"coin_type"`
 	List     []ShopOrderDetail `json:"list"`
 }

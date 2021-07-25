@@ -58,8 +58,12 @@ func (o *OrderServer) GetOrderDetail(ctx context.Context, req *order_business.Ge
 	rsp, retCode := service.GetOrderDetail(ctx, req)
 	if retCode != code.Success {
 		switch retCode {
+		case code.OrderTxCodeNotExist:
+			result.Common.Code = order_business.RetCode_ORDER_TX_CODE_NOT_EXIST
 		case code.OrderExpire:
 			result.Common.Code = order_business.RetCode_ORDER_EXPIRE
+		case code.OrderPayIng:
+			result.Common.Code = order_business.RetCode_ORDER_PAY_ING
 		case code.OrderPayCompleted:
 			result.Common.Code = order_business.RetCode_ORDER_PAY_COMPLETED
 		case code.OrderStateInvalid:
@@ -72,22 +76,18 @@ func (o *OrderServer) GetOrderDetail(ctx context.Context, req *order_business.Ge
 		result.Common.Msg = errcode.GetErrMsg(retCode)
 		return &result, nil
 	}
-	result.Account = rsp.UserCode
 	result.CoinType = order_business.CoinType(rsp.CoinType)
 	result.List = make([]*order_business.ShopOrderDetail, len(rsp.List))
 	for i := 0; i < len(rsp.List); i++ {
 		shopOrderDe := &order_business.ShopOrderDetail{
+			ShopId:  rsp.List[i].ShopId,
 			OrderCode:   rsp.List[i].OrderCode,
-			Merchant:    rsp.List[i].ShopCode,
-			TimeExpire:  rsp.List[i].TimeExpire,
-			NotifyUrl:   rsp.List[i].NotifyUrl,
 			Description: rsp.List[i].Description,
-			Detail: &order_business.TradeGoodsDetail{
-				Money: rsp.List[i].Amount,
-			},
+			Money:       rsp.List[i].Amount,
 		}
 		result.List[i] = shopOrderDe
 	}
+
 	return &result, nil
 }
 
