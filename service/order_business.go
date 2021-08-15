@@ -59,7 +59,7 @@ func createOrderCheckPriceVersion(ctx context.Context, req *order_business.Creat
 		setList = append(setList, set)
 	}
 	serverName := args.RpcServiceMicroMallSku
-	conn, err := util.GetGrpcClient(serverName)
+	conn, err := util.GetGrpcClient(ctx, serverName)
 	if err != nil {
 		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
 		return code.ErrorServer
@@ -304,7 +304,7 @@ func tradeOrderAggregateData(ctx context.Context, req *order_business.CreateOrde
 func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOrderRequest, deductInventoryList []*sku_business.InventoryEntryShop) int {
 	// 扣减库存
 	serverName := args.RpcServiceMicroMallSku
-	conn, err := util.GetGrpcClient(serverName)
+	conn, err := util.GetGrpcClient(ctx, serverName)
 	if err != nil {
 		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
 		return code.ErrorServer

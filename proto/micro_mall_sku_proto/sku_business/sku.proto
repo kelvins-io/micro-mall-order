@@ -3,6 +3,7 @@ syntax = "proto3";
 package sku_business;
 
 import "gitee.com/kelvins-io/common/proto/google/api/annotations.proto";
+option go_package = "proto/micro_mall_sku_proto/sku_business;sku_business";
 
 service SkuBusinessService {
     // 上架商品
@@ -150,6 +151,7 @@ message SearchSkuInventoryEntry {
 
 message ConfirmSkuInventoryRequest {
     repeated string out_trade_no = 1; // 外部订单号
+    OperationMeta op_meta = 2;
 }
 
 message ConfirmSkuInventoryResponse {
@@ -191,11 +193,13 @@ message SupplementSkuPropertyResponse {
 }
 
 message GetSkuListRequest {
-    int64 shop_id = 2; // 指定店铺搜索，为0则搜索全部
+    int64 shop_id = 1; // 指定店铺搜索，如果店铺ID为0，则仅按sku搜索
+    repeated string sku_code_list = 2; // 商品sku列表
 }
 
 message GetSkuListResponse {
-    repeated SkuInventoryInfo list = 1;
+    CommonResponse common = 1;
+    repeated SkuInventoryInfo list = 2;
 }
 
 // 商品库存数据
@@ -232,6 +236,7 @@ message PutAwaySkuResponse {
 enum RetCode {
     SUCCESS = 0;
     ERROR = 500;
+    INVALID_PARAMETER = 400;
     USER_NOT_EXIST = 50001;
     USER_EXIST = 50002;
     MERCHANT_NOT_EXIST = 50003;
