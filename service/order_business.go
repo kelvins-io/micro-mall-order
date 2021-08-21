@@ -64,7 +64,7 @@ func createOrderCheckPriceVersion(ctx context.Context, req *order_business.Creat
 		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
 		return code.ErrorServer
 	}
-	defer conn.Close()
+	//defer conn.Close()
 	client := sku_business.NewSkuBusinessServiceClient(conn)
 	filtrateReq := &sku_business.FiltrateSkuPriceVersionRequest{
 		SetList:    setList,
@@ -309,7 +309,7 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v", serverName, err)
 		return code.ErrorServer
 	}
-	defer conn.Close()
+	//defer conn.Close()
 	skuClient := sku_business.NewSkuBusinessServiceClient(conn)
 	skuR := sku_business.DeductInventoryRequest{
 		List: deductInventoryList,
