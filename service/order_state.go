@@ -6,6 +6,7 @@ import (
 	"gitee.com/cristiane/micro-mall-order/pkg/code"
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_order_proto/order_business"
 	"gitee.com/cristiane/micro-mall-order/repository"
+	"gitee.com/kelvins-io/common/json"
 	"gitee.com/kelvins-io/kelvins"
 )
 
@@ -75,7 +76,7 @@ func InspectShopOrder(ctx context.Context, req *order_business.InspectShopOrderR
 	}
 	orderList, err := repository.GetOrderList("id,state,pay_state", where)
 	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "GetOrderList err: %v,where: %+v", err, where)
+		kelvins.ErrLogger.Errorf(ctx, "GetOrderList err: %v,where: %v", err, json.MarshalToStringNoError(where))
 		retCode = code.ErrorServer
 		return
 	}

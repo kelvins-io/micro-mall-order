@@ -73,13 +73,13 @@ func createOrderCheckPriceVersion(ctx context.Context, req *order_business.Creat
 	}
 	filtrateRsp, err := client.FiltrateSkuPriceVersion(ctx, filtrateReq)
 	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v, req: %+v", serverName, err, filtrateReq)
+		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v, req: %v", serverName, err, json.MarshalToStringNoError(filtrateReq))
 		return code.ErrorServer
 	}
 	if filtrateRsp.Common.Code == sku_business.RetCode_SUCCESS {
 		return code.Success
 	}
-	kelvins.ErrLogger.Errorf(ctx, "FiltrateSkuPriceVersion req: %+v, rsp: %+v", filtrateReq, filtrateRsp)
+	kelvins.ErrLogger.Errorf(ctx, "FiltrateSkuPriceVersion req: %v, rsp: %v", json.MarshalToStringNoError(filtrateReq), json.MarshalToStringNoError(filtrateRsp))
 	switch filtrateRsp.Common.Code {
 	case sku_business.RetCode_SKU_PRICE_VERSION_NOT_EXIST:
 		return code.SkuPriceVersionNotExist
@@ -179,7 +179,7 @@ func tradeOrderCreate(ctx context.Context, tx *xorm.Session, orderList []mysql.O
 		if errRollback != nil {
 			kelvins.ErrLogger.Errorf(ctx, "CreateOrder Rollback err: %v", errRollback)
 		}
-		kelvins.ErrLogger.Errorf(ctx, "CreateOrder err: %v, orderList: %+v", err, orderList)
+		kelvins.ErrLogger.Errorf(ctx, "CreateOrder err: %v, orderList: %v", err, json.MarshalToStringNoError(orderList))
 		return code.ErrorServer
 	}
 	// 创建订单明细
@@ -189,7 +189,7 @@ func tradeOrderCreate(ctx context.Context, tx *xorm.Session, orderList []mysql.O
 		if errRollback != nil {
 			kelvins.ErrLogger.Errorf(ctx, "CreateOrder Rollback err: %v", errRollback)
 		}
-		kelvins.ErrLogger.Errorf(ctx, "CreateOrderSku err: %v, orderSkuList: %+v", err, orderSkuList)
+		kelvins.ErrLogger.Errorf(ctx, "CreateOrderSku err: %v, orderSkuList: %v", err, json.MarshalToStringNoError(orderSkuList))
 		return code.ErrorServer
 	}
 	// 创建订单场景信息
@@ -199,7 +199,7 @@ func tradeOrderCreate(ctx context.Context, tx *xorm.Session, orderList []mysql.O
 		if errRollback != nil {
 			kelvins.ErrLogger.Errorf(ctx, "CreateOrderSceneShop Rollback err: %v", errRollback)
 		}
-		kelvins.ErrLogger.Errorf(ctx, "CreateOrderSceneShop err: %v, orderSceneShopList: %+v", err, orderSceneShopList)
+		kelvins.ErrLogger.Errorf(ctx, "CreateOrderSceneShop err: %v, orderSceneShopList: %v", err, json.MarshalToStringNoError(orderSceneShopList))
 		return code.ErrorServer
 	}
 	return code.Success
@@ -358,9 +358,9 @@ func tradeOrderEventNotice(ctx context.Context, req *order_business.CreateOrderR
 	}
 	taskUUID, retCode := pushSer.PushMessage(ctx, businessMsg)
 	if retCode != code.Success {
-		kelvins.ErrLogger.Errorf(ctx, "trade order businessMsg: %+v  notice send err: ", businessMsg, errcode.GetErrMsg(retCode))
+		kelvins.ErrLogger.Errorf(ctx, "trade order businessMsg: %v  notice send err: ", json.MarshalToStringNoError(businessMsg), errcode.GetErrMsg(retCode))
 	} else {
-		kelvins.BusinessLogger.Infof(ctx, "trade order businessMsg businessMsg: %+v  taskUUID :%v", businessMsg, taskUUID)
+		kelvins.BusinessLogger.Infof(ctx, "trade order businessMsg: %v  taskUUID :%v", json.MarshalToStringNoError(businessMsg), taskUUID)
 	}
 	return retCode
 }
@@ -378,7 +378,7 @@ func GetOrderDetail(ctx context.Context, req *order_business.GetOrderDetailReque
 	}
 	orderList, err := repository.GetOrderList(sqlSelectOrderDetail, where)
 	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "GetOrderListByTxCode err: %v, where: %+v", err, where)
+		kelvins.ErrLogger.Errorf(ctx, "GetOrderListByTxCode err: %v, where: %v", err, json.MarshalToStringNoError(where))
 		retCode = code.ErrorServer
 		return
 	}
@@ -444,7 +444,7 @@ func GetOrderSku(ctx context.Context, req *order_business.GetOrderSkuRequest) (*
 	for i := 0; i < len(orderList); i++ {
 		orderSkuList, err := repository.GetOrderSkuListByOrderCode("sku_code,amount,name,price", []string{orderList[i].OrderCode})
 		if err != nil {
-			kelvins.ErrLogger.Errorf(ctx, "GetOrderSkuListByOrderCode err: %v ,orderCodeList: %v", err, orderList[i].OrderCode)
+			kelvins.ErrLogger.Errorf(ctx, "GetOrderSkuListByOrderCode err: %v ,OrderCode: %v", err, orderList[i].OrderCode)
 			retCode = code.ErrorServer
 			return result, retCode
 		}
@@ -490,16 +490,16 @@ func UpdateOrderState(ctx context.Context, req *order_business.UpdateOrderStateR
 		if err != nil {
 			errRollback := tx.Rollback()
 			if errRollback != nil {
-				kelvins.ErrLogger.Errorf(ctx, "UpdateOrder Rollback err: %v, where: %+v, maps: %+v", errRollback, where, maps)
+				kelvins.ErrLogger.Errorf(ctx, "UpdateOrder Rollback err: %v, where: %v, maps: %v", errRollback, json.MarshalToStringNoError(where), json.MarshalToStringNoError(maps))
 			}
-			kelvins.ErrLogger.Errorf(ctx, "UpdateOrder err: %v, where: %+v, maps: %+v", err, where, maps)
+			kelvins.ErrLogger.Errorf(ctx, "UpdateOrder err: %v, where: %v, maps: %v", err, json.MarshalToStringNoError(where), json.MarshalToStringNoError(maps))
 			retCode = code.ErrorServer
 			return
 		}
 		if rowsAffected <= 0 {
 			errRollback := tx.Rollback()
 			if errRollback != nil {
-				kelvins.ErrLogger.Errorf(ctx, "UpdateOrder Rollback err: %v, where: %+v, maps: %+v", errRollback, where, maps)
+				kelvins.ErrLogger.Errorf(ctx, "UpdateOrder Rollback err: %v, where: %v, maps: %v", errRollback, json.MarshalToStringNoError(where), json.MarshalToStringNoError(maps))
 			}
 			retCode = code.OperationNotEffect
 			return
@@ -548,10 +548,10 @@ func OrderTradeNotice(ctx context.Context, req *order_business.OrderTradeNoticeR
 	}
 	taskUUID, pushCode := pushSer.PushMessage(ctx, businessMsg)
 	if pushCode != code.Success {
-		kelvins.ErrLogger.Errorf(ctx, "trade order businessMsg: %+v  notice send err: ", json.MarshalToStringNoError(businessMsg), errcode.GetErrMsg(retCode))
+		kelvins.ErrLogger.Errorf(ctx, "trade order businessMsg: %v  notice send err: ", json.MarshalToStringNoError(businessMsg), errcode.GetErrMsg(retCode))
 		return code.ErrorServer
 	}
-	kelvins.BusinessLogger.Infof(ctx, "trade order businessMsg businessMsg: %+v  taskUUID :%v", json.MarshalToStringNoError(businessMsg), taskUUID)
+	kelvins.BusinessLogger.Infof(ctx, "trade order businessMsg: %v  taskUUID :%v", json.MarshalToStringNoError(businessMsg), taskUUID)
 
 	return retCode
 }
