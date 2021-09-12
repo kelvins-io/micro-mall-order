@@ -6,9 +6,7 @@ import (
 )
 
 var (
-	EmailConfigSetting           *EmailConfigSettingS
-	AppName                      = ""
-	TradeOrderQueueServer        *queue.MachineryQueue
-	TradeOrderPayCallbackSetting *setting.QueueAMQPSettingS
-	TradeOrderPayQueueServer     *queue.MachineryQueue
+	EmailConfigSetting               *EmailConfigSettingS
+	TradeOrderPayCallbackSetting     *setting.QueueAMQPSettingS
+	TradeOrderPayCallbackQueueServer *queue.MachineryQueue
 )

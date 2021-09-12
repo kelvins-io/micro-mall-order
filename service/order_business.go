@@ -340,7 +340,7 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 
 func tradeOrderEventNotice(ctx context.Context, req *order_business.CreateOrderRequest, txCode string) int {
 	// 触发订单事件
-	pushSer := NewPushNoticeService(vars.TradeOrderQueueServer, PushMsgTag{
+	pushSer := NewPushNoticeService(kelvins.QueueServerAMQP, PushMsgTag{
 		DeliveryTag:    args.TaskNameTradeOrderNotice,
 		DeliveryErrTag: args.TaskNameTradeOrderNoticeErr,
 		RetryCount:     kelvins.QueueAMQPSetting.TaskRetryCount,
@@ -530,7 +530,7 @@ func OrderTradeNotice(ctx context.Context, req *order_business.OrderTradeNoticeR
 		return code.OrderTxCodeNotExist
 	}
 	// 触发订单事件
-	pushSer := NewPushNoticeService(vars.TradeOrderPayQueueServer, PushMsgTag{
+	pushSer := NewPushNoticeService(vars.TradeOrderPayCallbackQueueServer, PushMsgTag{
 		DeliveryTag:    args.TaskNameTradeOrderPayCallback,
 		DeliveryErrTag: args.TaskNameTradeOrderPayCallbackErr,
 		RetryCount:     kelvins.QueueAMQPSetting.TaskRetryCount,
