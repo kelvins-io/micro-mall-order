@@ -80,7 +80,7 @@ func (o *OrderServer) GetOrderDetail(ctx context.Context, req *order_business.Ge
 	result.List = make([]*order_business.ShopOrderDetail, len(rsp.List))
 	for i := 0; i < len(rsp.List); i++ {
 		shopOrderDe := &order_business.ShopOrderDetail{
-			ShopId:  rsp.List[i].ShopId,
+			ShopId:      rsp.List[i].ShopId,
 			OrderCode:   rsp.List[i].OrderCode,
 			Description: rsp.List[i].Description,
 			Money:       rsp.List[i].Amount,
