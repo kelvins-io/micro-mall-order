@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"gitee.com/kelvins-io/common/env"
+	"gitee.com/cristiane/micro-mall-order/proto"
 )
 
 // SwaggerHandler 处理swagger.json文件的http请求
@@ -24,7 +25,7 @@ func SwaggerHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	path := strings.TrimPrefix(r.URL.Path, "/swagger/")
-	bytes, err := Asset(path)
+	bytes, err := proto.Asset(path)
 	if err == nil {
 		w.Write(bytes)
 	}
