@@ -350,7 +350,7 @@ func tradeOrderEventNotice(ctx context.Context, req *order_business.CreateOrderR
 		Type: args.TradeOrderEventTypeCreate,
 		Tag:  args.GetMsg(args.TradeOrderEventTypeCreate),
 		UUID: util.GetUUID(),
-		Msg: json.MarshalToStringNoError(args.TradeOrderNotice{
+		Content: json.MarshalToStringNoError(args.TradeOrderNotice{
 			Uid:    req.Uid,
 			Time:   util.ParseTimeOfStr(time.Now().Unix()),
 			TxCode: txCode,
@@ -540,7 +540,7 @@ func OrderTradeNotice(ctx context.Context, req *order_business.OrderTradeNoticeR
 		Type: args.TradeOrderEventTypePayCallback,
 		Tag:  args.GetMsg(args.TradeOrderEventTypePayCallback),
 		UUID: util.GetUUID(),
-		Msg: json.MarshalToStringNoError(args.TradeOrderPayCallback{
+		Content: json.MarshalToStringNoError(args.TradeOrderPayCallback{
 			Uid:    req.Uid,
 			TxCode: req.OrderTxCode,
 			PayId:  req.PayId,

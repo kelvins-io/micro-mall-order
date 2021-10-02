@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"gitee.com/kelvins-io/common/env"
 	"gitee.com/cristiane/micro-mall-order/proto"
+	"gitee.com/kelvins-io/common/env"
 )
 
 // SwaggerHandler 处理swagger.json文件的http请求
