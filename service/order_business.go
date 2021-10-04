@@ -13,7 +13,9 @@ import (
 	"gitee.com/kelvins-io/common/errcode"
 	"gitee.com/kelvins-io/common/json"
 	"gitee.com/kelvins-io/kelvins"
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	"strings"
 	"time"
 	"xorm.io/xorm"
 )
@@ -112,7 +114,7 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 	//txCode := util.GetUUID()
 	txCode := req.OrderTxCode
 	// 构造订单
-	orderList, orderSkuList, orderSceneShopList, deductInventoryList, retCode := tradeOrderAggregateData(ctx, req, txCode)
+	orderList, orderSkuList, orderSceneShopList, deductInventoryList, searchOrderInfo, retCode := tradeOrderAggregateData(ctx, req, txCode)
 	if retCode != code.Success {
 		return
 	}
@@ -139,7 +141,7 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 	}
 	result.TxCode = txCode
 	// 触发订单事件
-	retCode = tradeOrderEventNotice(ctx, req, txCode)
+	retCode = tradeOrderEventNotice(ctx, req.GetUid(), txCode, searchOrderInfo)
 	if retCode != code.Success {
 		errRollback := tx.Rollback()
 		if errRollback != nil {
@@ -206,13 +208,16 @@ func tradeOrderCreate(ctx context.Context, tx *xorm.Session, orderList []mysql.O
 }
 
 func tradeOrderAggregateData(ctx context.Context, req *order_business.CreateOrderRequest, txCode string) (
-	[]mysql.Order, []mysql.OrderSku, []mysql.OrderSceneShop, []*sku_business.InventoryEntryShop, int) {
+	[]mysql.Order, []mysql.OrderSku, []mysql.OrderSceneShop, []*sku_business.InventoryEntryShop, *args.SearchTradeOrderInfo, int) {
 	// 初始订单和订单明细
 	shops := req.Detail.ShopDetail
 	orderList := make([]mysql.Order, len(shops))
 	orderSkuList := make([]mysql.OrderSku, 0)
 	orderSceneShopList := make([]mysql.OrderSceneShop, 0)
 	deductInventoryList := make([]*sku_business.InventoryEntryShop, 0)
+	searchOrderInfo := &args.SearchTradeOrderInfo{}
+	searchOrderInfo.Description = req.GetDescription()
+	searchOrderInfo.DeviceId = req.GetDeviceId()
 	for i := 0; i < len(shops); i++ {
 		orderCode := util.GetUUID()
 		totalMoney := decimal.NewFromInt(0)
@@ -222,6 +227,15 @@ func tradeOrderAggregateData(ctx context.Context, req *order_business.CreateOrde
 			Detail:     nil,
 		}
 		deductEntryList := make([]*sku_business.InventoryEntryDetail, 0)
+		searchOrderEntry := args.SearchTradeOrderEntry{}
+		searchOrderEntry.OrderCode = orderCode
+		if shops[i].GetSceneInfo() != nil {
+			if shops[i].GetSceneInfo().GetStoreInfo() != nil {
+				searchOrderEntry.ShopName = shops[i].GetSceneInfo().GetStoreInfo().GetName()
+				searchOrderEntry.ShopAddress = shops[i].GetSceneInfo().GetStoreInfo().GetAddress()
+			}
+		}
+		goodsName := strings.Builder{}
 		var skuAmount int64
 		for j := 0; j < len(shops[i].Goods); j++ {
 			// 统计订单包含商品个数
@@ -233,7 +247,7 @@ func tradeOrderAggregateData(ctx context.Context, req *order_business.CreateOrde
 			price, err := decimal.NewFromString(shops[i].Goods[j].Price)
 			if err != nil {
 				kelvins.ErrLogger.Errorf(ctx, "decimal NewFromString err: %v, Price: %v", err, shops[i].Goods[j].Price)
-				return nil, nil, nil, nil, code.ErrorServer
+				return nil, nil, nil, nil, nil, code.ErrorServer
 			}
 			if shops[i].Goods[j].Reduction == "" {
 				shops[i].Goods[j].Reduction = "0"
@@ -241,7 +255,7 @@ func tradeOrderAggregateData(ctx context.Context, req *order_business.CreateOrde
 			reduction, err := decimal.NewFromString(shops[i].Goods[j].Reduction)
 			if err != nil {
 				kelvins.ErrLogger.Errorf(ctx, "decimal NewFromString err: %v, Reduction: %v", err, shops[i].Goods[j].Reduction)
-				return nil, nil, nil, nil, code.ErrorServer
+				return nil, nil, nil, nil, nil, code.ErrorServer
 			}
 			price = util.DecimalSub(price, reduction)
 			temp := util.DecimalMul(price, decimal.NewFromInt(shops[i].Goods[j].Amount))
@@ -262,7 +276,10 @@ func tradeOrderAggregateData(ctx context.Context, req *order_business.CreateOrde
 			}
 			deductEntryList = append(deductEntryList, deductEntry)
 			orderSkuList = append(orderSkuList, orderSku)
+			goodsName.WriteString(goods.Name)
+			goodsName.WriteString(";")
 		}
+		searchOrderEntry.GoodsName = goodsName.String()
 		deductEntryShop.Detail = deductEntryList
 		payExpire := time.Now().Add(30 * time.Minute)
 		order := mysql.Order{
@@ -296,9 +313,10 @@ func tradeOrderAggregateData(ctx context.Context, req *order_business.CreateOrde
 		orderSceneShopList = append(orderSceneShopList, orderSceneShop)
 		orderList[i] = order
 		deductInventoryList = append(deductInventoryList, deductEntryShop)
+		searchOrderInfo.ShopOrderList = append(searchOrderInfo.ShopOrderList, searchOrderEntry)
 	}
 
-	return orderList, orderSkuList, orderSceneShopList, deductInventoryList, code.Success
+	return orderList, orderSkuList, orderSceneShopList, deductInventoryList, searchOrderInfo, code.Success
 }
 
 func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOrderRequest, deductInventoryList []*sku_business.InventoryEntryShop) int {
@@ -338,7 +356,7 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 	return code.Success
 }
 
-func tradeOrderEventNotice(ctx context.Context, req *order_business.CreateOrderRequest, txCode string) int {
+func tradeOrderEventNotice(ctx context.Context, uid int64, txCode string, searchInfo *args.SearchTradeOrderInfo) int {
 	// 触发订单事件
 	pushSer := NewPushNoticeService(kelvins.QueueServerAMQP, PushMsgTag{
 		DeliveryTag:    args.TaskNameTradeOrderNotice,
@@ -351,7 +369,7 @@ func tradeOrderEventNotice(ctx context.Context, req *order_business.CreateOrderR
 		Tag:  args.GetMsg(args.TradeOrderEventTypeCreate),
 		UUID: util.GetUUID(),
 		Content: json.MarshalToStringNoError(args.TradeOrderNotice{
-			Uid:    req.Uid,
+			Uid:    uid,
 			Time:   util.ParseTimeOfStr(time.Now().Unix()),
 			TxCode: txCode,
 		}),
@@ -359,10 +377,37 @@ func tradeOrderEventNotice(ctx context.Context, req *order_business.CreateOrderR
 	taskUUID, retCode := pushSer.PushMessage(ctx, businessMsg)
 	if retCode != code.Success {
 		kelvins.ErrLogger.Errorf(ctx, "trade order businessMsg: %v  notice send err: ", json.MarshalToStringNoError(businessMsg), errcode.GetErrMsg(retCode))
-	} else {
-		kelvins.BusinessLogger.Infof(ctx, "trade order businessMsg: %v  taskUUID :%v", json.MarshalToStringNoError(businessMsg), taskUUID)
 	}
+	_ = taskUUID
+
+	// 订单搜索通知
+	if retCode == code.Success {
+		tradeOrderSearchSyncNotice(searchInfo)
+	}
+
 	return retCode
+}
+
+// 订单搜索同步
+func tradeOrderSearchSyncNotice(info *args.SearchTradeOrderInfo) {
+	if info == nil {
+		return
+	}
+	kelvins.GPool.SendJob(func() {
+		for i := 0; i < len(info.ShopOrderList); i++ {
+			shopOrder := info.ShopOrderList[i]
+			shopOrder.Description = info.Description
+			shopOrder.DeviceId = info.DeviceId
+			var ctx = context.TODO()
+			var msg = &args.CommonBusinessMsg{
+				Type:    args.TradeOrderInfoSearchNoticeType,
+				Tag:     "交易订单搜索通知",
+				UUID:    uuid.New().String(),
+				Content: json.MarshalToStringNoError(shopOrder),
+			}
+			vars.TradeOrderInfoSearchNoticePusher.PushMessage(ctx, msg)
+		}
+	})
 }
 
 const sqlSelectOrderDetail = "description,money,pay_expire,order_code,shop_id,uid,coin_type,state,pay_state"
@@ -551,7 +596,7 @@ func OrderTradeNotice(ctx context.Context, req *order_business.OrderTradeNoticeR
 		kelvins.ErrLogger.Errorf(ctx, "trade order businessMsg: %v  notice send err: ", json.MarshalToStringNoError(businessMsg), errcode.GetErrMsg(retCode))
 		return code.ErrorServer
 	}
-	kelvins.BusinessLogger.Infof(ctx, "trade order businessMsg: %v  taskUUID :%v", json.MarshalToStringNoError(businessMsg), taskUUID)
+	_ = taskUUID
 
 	return retCode
 }

@@ -253,7 +253,6 @@ func (o *OrderServer) FindOrderList(ctx context.Context, req *order_business.Fin
 func (o *OrderServer) InspectShopOrder(ctx context.Context, req *order_business.InspectShopOrderRequest) (*order_business.InspectShopOrderResponse, error) {
 	result := &order_business.InspectShopOrderResponse{Common: &order_business.CommonResponse{
 		Code: order_business.RetCode_SUCCESS,
-		Msg:  "",
 	}}
 	retCode := service.InspectShopOrder(ctx, req)
 	if retCode != code.Success {
@@ -268,5 +267,20 @@ func (o *OrderServer) InspectShopOrder(ctx context.Context, req *order_business.
 		result.Common.Msg = errcode.GetErrMsg(retCode)
 		return result, nil
 	}
+	return result, nil
+}
+
+func (o *OrderServer) SearchTradeOrder(ctx context.Context, req *order_business.SearchTradeOrderRequest) (*order_business.SearchTradeOrderResponse,error)  {
+	result := &order_business.SearchTradeOrderResponse{
+		Common: &order_business.CommonResponse{
+			Code: order_business.RetCode_SUCCESS,
+		},
+	}
+	list ,retCode := service.SearchTradeOrder(ctx, req.GetQuery())
+	if retCode != code.Success {
+		result.Common.Code = order_business.RetCode_ERROR
+		return result, nil
+	}
+	result.List = list
 	return result, nil
 }

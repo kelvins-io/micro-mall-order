@@ -6,7 +6,6 @@ const (
 	TableOrder          = "order"
 	TableOrderSku       = "order_sku"
 	TableOrderSceneShop = "order_scene_shop"
-	TableConfigKv       = "config_kv_store"
 )
 
 type Order struct {

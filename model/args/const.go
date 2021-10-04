@@ -34,9 +34,9 @@ type OrderDetailRsp struct {
 }
 
 const (
-	RpcServiceMicroMallUsers = "micro-mall-users"
-	RpcServiceMicroMallShop  = "micro-mall-shop"
-	RpcServiceMicroMallSku   = "micro-mall-sku"
+	RpcServiceMicroMallUsers  = "micro-mall-users"
+	RpcServiceMicroMallSku    = "micro-mall-sku"
+	RpcServiceMicroMallSearch = "micro-mall-search"
 )
 
 const (
@@ -50,8 +50,28 @@ const (
 )
 
 const (
-	ConfigKvShopOrderNotifyUrl = "shop_order_notify_url"
+	TradeOrderInfoSearchNoticeTag    = "trade_order_info_search_notice"
+	TradeOrderInfoSearchNoticeTagErr = "trade_order_info_search_notice_err"
 )
+
+const (
+	TradeOrderInfoSearchNoticeType = 10001
+)
+
+type SearchTradeOrderInfo struct {
+	Description   string                  `json:"description"`
+	DeviceId      string                  `json:"device_id"`
+	ShopOrderList []SearchTradeOrderEntry `json:"shop_order_list"`
+}
+
+type SearchTradeOrderEntry struct {
+	Description string `json:"description"`
+	DeviceId    string `json:"device_id"`
+	ShopName    string `json:"shop_name"`
+	ShopAddress string `json:"shop_address"`
+	GoodsName   string `json:"goods_name"`
+	OrderCode   string `json:"order_code"`
+}
 
 type CommonBusinessMsg struct {
 	Type    int    `json:"type"`

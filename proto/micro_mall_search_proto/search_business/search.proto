@@ -1,0 +1,141 @@
+syntax = "proto3";
+
+package search_business;
+
+import "gitee.com/kelvins-io/common/proto/google/api/annotations.proto";
+option go_package = "proto/micro_mall_search_proto/search_business;search_business";
+
+// 搜索服务
+service SearchBusinessService {
+    // 商品库存搜索
+    rpc SkuInventorySearch(SkuInventorySearchRequest)returns(SkuInventorySearchResponse) {
+        option (google.api.http) = {
+            get: "/v1/search/sku_inventory"
+        };
+    }
+    // 店铺搜索
+    rpc ShopSearch(ShopSearchRequest) returns (ShopSearchResponse) {
+        option (google.api.http) = {
+            get: "/v1/search/shop"
+        };
+    }
+    // 用户搜素
+    rpc UserSearch(UserSearchRequest) returns (UserSearchResponse) {
+        option (google.api.http) = {
+            get: "/v1/search/user"
+        };
+    }
+    // 商户搜索
+    rpc MerchantInfoSearch(MerchantInfoSearchRequest) returns (MerchantInfoSearchResponse) {
+        option (google.api.http) = {
+            get: "/v1/search/merchant"
+        };
+    }
+    // 交易订单搜索
+    rpc TradeOrderSearch(TradeOrderSearchRequest) returns (TradeOrderSearchResponse) {
+        option (google.api.http) = {
+            get: "/v1/search/trade_order"
+        };
+    }
+}
+
+enum RetCode {
+    SUCCESS = 0;
+    ERROR = 500;
+    USER_NOT_EXIST = 50001;
+    USER_EXIST = 50002;
+    MERCHANT_NOT_EXIST = 50003;
+    MERCHANT_EXIST = 50004;
+    SHOP_NOT_EXIST = 50005;
+    SHOP_EXIST = 50006;
+    SKU_NOT_EXIST = 50007;
+    SKU_EXIST = 50008;
+}
+
+message ShopSearchRequest {
+    string shop_key = 1;
+}
+
+message ShopSearchResponse {
+    CommonResponse common = 1;
+    repeated ShopSearchEntry list = 2;
+}
+
+message ShopSearchEntry {
+    string shop_id = 1;
+    string shop_name = 2;
+    double score = 399;
+}
+
+message SkuInventorySearchRequest {
+    string sku_key = 1;
+}
+
+message SkuInventoryEntry {
+    string shop_id = 1;
+    string sku_code = 2;
+    string sku_name = 3;
+    double score  = 399;
+}
+
+message SkuInventorySearchResponse {
+    CommonResponse common = 1;
+    repeated SkuInventoryEntry list = 2;
+}
+
+message MerchantInfoSearchRequest {
+    string query = 1;
+}
+
+message MerchantInfoSearchResponse {
+    CommonResponse common = 1;
+    repeated MerchantInfoEntry list = 2;
+}
+
+message TradeOrderSearchRequest {
+    string query = 1;
+}
+
+message TradeOrderSearchResponse {
+    CommonResponse common = 1;
+    repeated TradeOrderInfo list = 2;
+}
+
+message TradeOrderInfo {
+    string order_code = 1;
+    double score  = 999;
+}
+
+message MerchantInfoEntry {
+    int64 uid = 1;
+    string user_name = 2;
+    string merchant_code = 3;
+    double score  = 999;
+}
+
+message UserSearchRequest {
+    string query = 1;
+}
+
+message UserSearchResponse {
+    CommonResponse common = 1;
+    repeated UserInfoEntry list = 2;
+}
+
+message UserInfoEntry {
+    string name = 1;
+    string phone = 2;
+    double score  = 999;
+}
+
+enum OperationType {
+    CREATE = 0;
+    UPDATE = 1;
+    DELETE = 2;
+    AUDIT = 3;
+    PUT_AWAY = 4;
+}
+message CommonResponse {
+    RetCode code = 1;
+    string msg = 2;
+}

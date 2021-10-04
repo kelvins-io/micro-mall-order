@@ -17,3 +17,10 @@ func GetOrderSkuListByOrderCode(sqlSelect string, orderCode []string) ([]mysql.O
 	err = kelvins.XORM_DBEngine.Table(mysql.TableOrderSku).Select(sqlSelect).In("order_code", orderCode).Find(&result)
 	return result, err
 }
+
+func FindOrderSkuByOrderCode(sqlSelect string, orderCode []string) ([]mysql.OrderSku, error) {
+	var result = make([]mysql.OrderSku, 0)
+	var err error
+	err = kelvins.XORM_DBEngine.Table(mysql.TableOrderSku).Select(sqlSelect).In("order_code", orderCode).Find(&result)
+	return result, err
+}

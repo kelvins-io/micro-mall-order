@@ -22,6 +22,10 @@ ExpireSecond = 100
 [kelvins-rpc-server]
 NumServerWorkers = 50
 
+[kelvins-gpool]
+WorkerNum = 10
+JobChanLen = 1000
+
 [kelvins-mysql]
 Host = "127.0.0.1:3306"
 UserName = "root"
@@ -62,6 +66,18 @@ Exchange = "trade_order_pay_callback"
 ExchangeType = "direct"
 BindingKey = "trade_order_pay_callback"
 PrefetchCount = 5
+TaskRetryCount = 3
+TaskRetryTimeout = 3600
+
+[trade-order-info-search-notice]
+Broker = "amqp://micro-mall:szJ9aePR@127.0.0.1:5672/micro-mall"
+DefaultQueue = "trade_order_info_search_notice"
+ResultBackend = "redis://xxxx@127.0.0.1:6379/8"
+ResultsExpireIn = 3600
+Exchange = "trade_order_info_search_notice"
+ExchangeType = "direct"
+BindingKey = "trade_order_info_search_notice"
+PrefetchCount = 3
 TaskRetryCount = 3
 TaskRetryTimeout = 3600
 

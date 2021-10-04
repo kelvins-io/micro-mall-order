@@ -291,6 +291,37 @@
         ]
       }
     },
+    "/v1/order/search": {
+      "get": {
+        "summary": "订单搜索",
+        "operationId": "OrderBusinessService_SearchTradeOrder",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/order_businessSearchTradeOrderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "OrderBusinessService"
+        ]
+      }
+    },
     "/v1/order/shop/inspect": {
       "get": {
         "summary": "店铺订单存在检查",
@@ -843,6 +874,81 @@
         "ORDER_PAY_ING"
       ],
       "default": "SUCCESS"
+    },
+    "order_businessSearchTradeOrderGoods": {
+      "type": "object",
+      "properties": {
+        "goods_name": {
+          "type": "string"
+        },
+        "price": {
+          "type": "string"
+        },
+        "sku_code": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "order_businessSearchTradeOrderInfo": {
+      "type": "object",
+      "properties": {
+        "order_code": {
+          "type": "string"
+        },
+        "shop_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "money": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "create_time": {
+          "type": "string"
+        },
+        "pay_state": {
+          "type": "string"
+        },
+        "pay_time": {
+          "type": "string"
+        },
+        "shop_address": {
+          "type": "string"
+        },
+        "shop_name": {
+          "type": "string"
+        },
+        "goods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order_businessSearchTradeOrderGoods"
+          }
+        },
+        "score": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "order_businessSearchTradeOrderResponse": {
+      "type": "object",
+      "properties": {
+        "common": {
+          "$ref": "#/definitions/order_businessCommonResponse"
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order_businessSearchTradeOrderInfo"
+          }
+        }
+      }
     },
     "order_businessShopOrderDetail": {
       "type": "object",
