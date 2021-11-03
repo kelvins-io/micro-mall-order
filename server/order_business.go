@@ -144,6 +144,8 @@ func (o *OrderServer) UpdateOrderState(ctx context.Context, req *order_business.
 			result.Common.Code = order_business.RetCode_ORDER_STATE_LOCKED
 		} else if retCode == code.OrderStateProhibit {
 			result.Common.Code = order_business.RetCode_ORDER_STATE_PROHIBIT
+		} else if retCode == code.TransactionFailed {
+			result.Common.Code = order_business.RetCode_TRANSACTION_FAILED
 		} else {
 			result.Common.Code = order_business.RetCode_ERROR
 		}
@@ -270,13 +272,13 @@ func (o *OrderServer) InspectShopOrder(ctx context.Context, req *order_business.
 	return result, nil
 }
 
-func (o *OrderServer) SearchTradeOrder(ctx context.Context, req *order_business.SearchTradeOrderRequest) (*order_business.SearchTradeOrderResponse,error)  {
+func (o *OrderServer) SearchTradeOrder(ctx context.Context, req *order_business.SearchTradeOrderRequest) (*order_business.SearchTradeOrderResponse, error) {
 	result := &order_business.SearchTradeOrderResponse{
 		Common: &order_business.CommonResponse{
 			Code: order_business.RetCode_SUCCESS,
 		},
 	}
-	list ,retCode := service.SearchTradeOrder(ctx, req.GetQuery())
+	list, retCode := service.SearchTradeOrder(ctx, req.GetQuery())
 	if retCode != code.Success {
 		result.Common.Code = order_business.RetCode_ERROR
 		return result, nil

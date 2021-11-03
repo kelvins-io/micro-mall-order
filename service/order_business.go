@@ -75,7 +75,7 @@ func createOrderCheckPriceVersion(ctx context.Context, req *order_business.Creat
 	}
 	filtrateRsp, err := client.FiltrateSkuPriceVersion(ctx, filtrateReq)
 	if err != nil {
-		kelvins.ErrLogger.Errorf(ctx, "GetGrpcClient %v,err: %v, req: %v", serverName, err, json.MarshalToStringNoError(filtrateReq))
+		kelvins.ErrLogger.Errorf(ctx, "FiltrateSkuPriceVersion %v,err: %v, req: %v", serverName, err, json.MarshalToStringNoError(filtrateReq))
 		return code.ErrorServer
 	}
 	if filtrateRsp.Common.Code == sku_business.RetCode_SUCCESS {
@@ -130,29 +130,30 @@ func CreateOrder(ctx context.Context, req *order_business.CreateOrderRequest) (r
 		retCode = code.ErrorServer
 		return
 	}
+	defer func() {
+		if retCode != code.Success {
+			err := tx.Rollback()
+			if err != nil {
+				kelvins.ErrLogger.Errorf(ctx, "CreateOrder Rollback err: %v", err)
+				return
+			}
+		}
+	}()
 	// 创建订单
 	retCode = tradeOrderCreate(ctx, tx, orderList, orderSkuList, orderSceneShopList)
 	if retCode != code.Success {
-		errRollback := tx.Rollback()
-		if errRollback != nil {
-			kelvins.ErrLogger.Errorf(ctx, "CreateOrder Rollback err: %v", errRollback)
-		}
 		return
 	}
 	result.TxCode = txCode
 	// 触发订单事件
 	retCode = tradeOrderEventNotice(ctx, req.GetUid(), txCode, searchOrderInfo)
 	if retCode != code.Success {
-		errRollback := tx.Rollback()
-		if errRollback != nil {
-			kelvins.ErrLogger.Errorf(ctx, "CreateOrder Rollback err: %v", errRollback)
-		}
 		return
 	}
 	err = tx.Commit()
 	if err != nil {
 		kelvins.ErrLogger.Errorf(ctx, "CreateOrder commit err: %v", err)
-		retCode = code.ErrorServer
+		retCode = code.TransactionFailed
 		return
 	}
 	return
@@ -177,30 +178,18 @@ func tradeOrderCreate(ctx context.Context, tx *xorm.Session, orderList []mysql.O
 	// 创建订单
 	err := repository.CreateOrder(tx, orderList)
 	if err != nil {
-		errRollback := tx.Rollback()
-		if errRollback != nil {
-			kelvins.ErrLogger.Errorf(ctx, "CreateOrder Rollback err: %v", errRollback)
-		}
 		kelvins.ErrLogger.Errorf(ctx, "CreateOrder err: %v, orderList: %v", err, json.MarshalToStringNoError(orderList))
 		return code.ErrorServer
 	}
 	// 创建订单明细
 	err = repository.CreateOrderSku(tx, orderSkuList)
 	if err != nil {
-		errRollback := tx.Rollback()
-		if errRollback != nil {
-			kelvins.ErrLogger.Errorf(ctx, "CreateOrder Rollback err: %v", errRollback)
-		}
 		kelvins.ErrLogger.Errorf(ctx, "CreateOrderSku err: %v, orderSkuList: %v", err, json.MarshalToStringNoError(orderSkuList))
 		return code.ErrorServer
 	}
 	// 创建订单场景信息
 	err = repository.CreateOrderSceneShop(tx, orderSceneShopList)
 	if err != nil {
-		errRollback := tx.Rollback()
-		if errRollback != nil {
-			kelvins.ErrLogger.Errorf(ctx, "CreateOrderSceneShop Rollback err: %v", errRollback)
-		}
 		kelvins.ErrLogger.Errorf(ctx, "CreateOrderSceneShop err: %v, orderSceneShopList: %v", err, json.MarshalToStringNoError(orderSceneShopList))
 		return code.ErrorServer
 	}
@@ -341,19 +330,21 @@ func tradeOrderDeductInventory(ctx context.Context, req *order_business.CreateOr
 		kelvins.ErrLogger.Errorf(ctx, "DeductInventory %v,err: %v", serverName, err)
 		return code.ErrorServer
 	}
-	if skuRsp == nil || skuRsp.Common == nil || skuRsp.Common.Code == sku_business.RetCode_ERROR {
+	if skuRsp != nil && skuRsp.Common != nil && skuRsp.Common.Code == sku_business.RetCode_SUCCESS {
+		return code.Success
+	}
+	kelvins.ErrLogger.Errorf(ctx, "DeductInventory req: %v, rsp: %v", json.MarshalToStringNoError(req), json.MarshalToStringNoError(skuRsp))
+
+	switch skuRsp.Common.Code {
+	case sku_business.RetCode_SKU_AMOUNT_NOT_ENOUGH:
+		return code.SkuAmountNotEnough
+	case sku_business.RetCode_SKU_DEDUCT_INVENTORY_RECORD_EXIST:
+		return code.OrderExist
+	case sku_business.RetCode_TRANSACTION_FAILED:
+		return code.TransactionFailed
+	default:
 		return code.ErrorServer
 	}
-	if skuRsp.Common.Code == sku_business.RetCode_SKU_AMOUNT_NOT_ENOUGH {
-		return code.SkuAmountNotEnough
-	}
-	if skuRsp.Common.Code == sku_business.RetCode_SKU_DEDUCT_INVENTORY_RECORD_EXIST {
-		return code.OrderExist
-	}
-	if skuRsp.Common.Code == sku_business.RetCode_TRANSACTION_FAILED {
-		return code.TransactionFailed
-	}
-	return code.Success
 }
 
 func tradeOrderEventNotice(ctx context.Context, uid int64, txCode string, searchInfo *args.SearchTradeOrderInfo) int {
@@ -521,6 +512,15 @@ func UpdateOrderState(ctx context.Context, req *order_business.UpdateOrderStateR
 		retCode = code.ErrorServer
 		return
 	}
+	defer func() {
+		if retCode != code.Success {
+			err := tx.Rollback()
+			if err != nil {
+				kelvins.ErrLogger.Errorf(ctx, "UpdateOrder Rollback err: %v", err)
+				return
+			}
+		}
+	}()
 	for i := 0; i < len(req.GetEntryList()); i++ {
 		row := req.EntryList[i]
 		where := map[string]interface{}{
@@ -533,19 +533,11 @@ func UpdateOrderState(ctx context.Context, req *order_business.UpdateOrderStateR
 		}
 		rowsAffected, err := repository.UpdateOrderByTx(tx, where, maps)
 		if err != nil {
-			errRollback := tx.Rollback()
-			if errRollback != nil {
-				kelvins.ErrLogger.Errorf(ctx, "UpdateOrder Rollback err: %v, where: %v, maps: %v", errRollback, json.MarshalToStringNoError(where), json.MarshalToStringNoError(maps))
-			}
 			kelvins.ErrLogger.Errorf(ctx, "UpdateOrder err: %v, where: %v, maps: %v", err, json.MarshalToStringNoError(where), json.MarshalToStringNoError(maps))
 			retCode = code.ErrorServer
 			return
 		}
 		if rowsAffected <= 0 {
-			errRollback := tx.Rollback()
-			if errRollback != nil {
-				kelvins.ErrLogger.Errorf(ctx, "UpdateOrder Rollback err: %v, where: %v, maps: %v", errRollback, json.MarshalToStringNoError(where), json.MarshalToStringNoError(maps))
-			}
 			retCode = code.OperationNotEffect
 			return
 		}
@@ -554,7 +546,7 @@ func UpdateOrderState(ctx context.Context, req *order_business.UpdateOrderStateR
 	err = tx.Commit()
 	if err != nil {
 		kelvins.ErrLogger.Errorf(ctx, "UpdateOrder Commit err: %v", err)
-		retCode = code.ErrorServer
+		retCode = code.TransactionFailed
 		return
 	}
 

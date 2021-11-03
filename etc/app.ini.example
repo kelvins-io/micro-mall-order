@@ -81,6 +81,21 @@ PrefetchCount = 3
 TaskRetryCount = 3
 TaskRetryTimeout = 3600
 
+[micro-mall-g2cache]
+CacheDebug = false
+CacheMonitor = false
+OutCachePubSub = false
+FreeCacheSize = 52428800
+RedisConfDSN = "127.0.0.1:6379"
+RedisConfDB = 3
+RedisConfPwd = "xxx"
+RedisConfMaxConn = 30
+PubSubRedisChannel = "micro-mall-order-pubsub-channel"
+PubSubRedisConfDSN = "127.0.0.1:6379"
+PubSubRedisConfDB = 5
+PubSubRedisConfPwd = "xxx"
+PubSubRedisConfMaxConn = 3
+
 [email-config]
 Enable = false
 User = "xxx@qq.com"

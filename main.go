@@ -13,6 +13,7 @@ func main() {
 		Application: &kelvins.Application{
 			LoadConfig: startup.LoadConfig,
 			SetupVars:  startup.SetupVars,
+			StopFunc: startup.StopFunc,
 			Name:       APP_NAME,
 		},
 		RegisterGRPCServer: startup.RegisterGRPCServer,
