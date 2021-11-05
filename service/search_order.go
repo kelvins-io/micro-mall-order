@@ -10,7 +10,6 @@ import (
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_order_proto/order_business"
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_search_proto/search_business"
 	"gitee.com/cristiane/micro-mall-order/repository"
-	"gitee.com/cristiane/micro-mall-order/vars"
 	"gitee.com/kelvins-io/common/json"
 	"gitee.com/kelvins-io/kelvins"
 	"time"
@@ -20,7 +19,7 @@ func SearchTradeOrder(ctx context.Context, query string) (result []*order_busine
 	result = make([]*order_business.SearchTradeOrderInfo, 0)
 	retCode = code.Success
 	searchKey := "micro-mall-order:search-order:" + query
-	err := vars.G2CacheEngine.Get(searchKey, 120, &result, func() (interface{}, error) {
+	err := kelvins.G2CacheEngine.Get(searchKey, 120, &result, func() (interface{}, error) {
 		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 		defer cancel()
 		list, ret := searchTradeOrder(ctx, query)

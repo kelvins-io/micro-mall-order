@@ -4,8 +4,8 @@ go 1.13
 
 require (
 	gitee.com/kelvins-io/common v1.1.5
-	gitee.com/kelvins-io/g2cache v4.0.5+incompatible
-	gitee.com/kelvins-io/kelvins v1.6.2
+	gitee.com/kelvins-io/g2cache v4.0.5+incompatible // indirect
+	gitee.com/kelvins-io/kelvins v1.6.3
 	github.com/RichardKnop/machinery v1.10.6
 	github.com/coocood/freecache v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.2

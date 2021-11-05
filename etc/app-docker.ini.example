@@ -81,7 +81,7 @@ PrefetchCount = 3
 TaskRetryCount = 3
 TaskRetryTimeout = 3600
 
-[micro-mall-g2cache]
+[kelvins-g2cache]
 CacheDebug = false
 CacheMonitor = false
 OutCachePubSub = false
