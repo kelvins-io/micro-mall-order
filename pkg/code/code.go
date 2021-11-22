@@ -36,10 +36,17 @@ const (
 	OrderPayIng              = 29000033
 )
 
+const (
+	InvalidParam           = 29000002
+	InvalidParamTimeFormat = 29000003
+)
+
 var ErrMap = make(map[int]string)
 
 func init() {
 	dict := map[int]string{
+		InvalidParam:             "无效参数",
+		InvalidParamTimeFormat:   "时间参数格式无效",
 		Success:                  "OK",
 		ErrorServer:              "服务器错误",
 		UserNotExist:             "用户不存在",

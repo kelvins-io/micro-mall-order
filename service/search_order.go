@@ -3,6 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
+	"time"
+
 	"gitee.com/cristiane/micro-mall-order/model/args"
 	"gitee.com/cristiane/micro-mall-order/model/mysql"
 	"gitee.com/cristiane/micro-mall-order/pkg/code"
@@ -10,9 +14,9 @@ import (
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_order_proto/order_business"
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_search_proto/search_business"
 	"gitee.com/cristiane/micro-mall-order/repository"
+	"gitee.com/kelvins-io/common/hash"
 	"gitee.com/kelvins-io/common/json"
 	"gitee.com/kelvins-io/kelvins"
-	"time"
 )
 
 func SearchTradeOrder(ctx context.Context, query string) (result []*order_business.SearchTradeOrderInfo, retCode int) {
@@ -144,5 +148,211 @@ func searchTradeOrder(ctx context.Context, query string) (result []*order_busine
 		result = append(result, info)
 	}
 
+	return
+}
+
+type Int64Slice []int64
+
+func (x Int64Slice) Len() int           { return len(x) }
+func (x Int64Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Int64Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Int64Slice) Sort()              { sort.Sort(x) }
+
+func OrderShopRank(ctx context.Context, req *order_business.OrderShopRankRequest) (list []*order_business.OrderShopRankEntry, retCode int) {
+	retCode = code.Success
+	list = make([]*order_business.OrderShopRankEntry, 0)
+	sort.Sort((Int64Slice)(req.Option.ShopId))
+	sort.Sort((Int64Slice)(req.Option.Uid))
+	shopIdKey := strings.Builder{}
+	for _, v := range req.Option.ShopId {
+		if v != 0 {
+			shopIdKey.WriteString(fmt.Sprintf("%v", v))
+		}
+	}
+	uidKey := strings.Builder{}
+	for _, v := range req.Option.Uid {
+		if v != 0 {
+			uidKey.WriteString(fmt.Sprintf("%v", v))
+		}
+	}
+	cacheKey := fmt.Sprintf("micro-mall-order:order-shop-rank:%v-%v-%v-%v-%v-%v",
+		shopIdKey.String(), uidKey.String(), req.Option.StartTime, req.Option.EndTime, req.PageMeta.PageSize, req.PageMeta.PageNum)
+
+	if len(cacheKey) > 512 {
+		cacheKey = hash.MD5EncodeToString(cacheKey)
+	}
+	err := kelvins.G2CacheEngine.Get(cacheKey, 5, &list, func() (interface{}, error) {
+		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		defer cancel()
+		result, ret := orderShopRank(ctx, req)
+		if ret != code.Success {
+			return result, fmt.Errorf("%v", ret)
+		}
+		return result, nil
+	})
+	if err != nil {
+		retCode = code.ErrorServer
+		return nil, 0
+	}
+	return
+}
+
+const orderShopRankSql = "uid, shop_id, sum(amount) as s_amount,sum(money) as s_money"
+
+func orderShopRank(ctx context.Context, req *order_business.OrderShopRankRequest) (list []*order_business.OrderShopRankEntry, retCode int) {
+	retCode = code.Success
+	orderRankWhere := map[string]interface{}{
+		"state":            0, // 有效
+		"pay_state":        3, // 已支付
+		"inventory_verify": 1, // 库存核实
+	}
+	if len(req.GetOption().GetShopId()) > 0 {
+		orderRankWhere["shop_id"] = req.GetOption().GetShopId()
+	}
+	if len(req.GetOption().GetUid()) > 0 {
+		orderRankWhere["uid"] = req.GetOption().GetUid()
+	}
+	inOrder := []string{"s_money", "s_amount"}
+	groupBy := "shop_id,uid"
+	var err error
+	var startTime time.Time
+	var endTime time.Time
+	if req.GetOption() != nil && req.GetOption().GetStartTime() != "" {
+		startTime, err = util.GenTimeOfStr(req.GetOption().GetStartTime())
+		if err != nil {
+			retCode = code.InvalidParamTimeFormat
+			return
+		}
+		startTime = startTime.UTC()
+	}
+	if req.GetOption() != nil && req.GetOption().GetEndTime() != "" {
+		endTime, err = util.GenTimeOfStr(req.GetOption().GetEndTime())
+		if err != nil {
+			retCode = code.InvalidParamTimeFormat
+			return
+		}
+		endTime = endTime.UTC()
+	}
+	ranks, err := repository.OrderShopRank(orderShopRankSql, orderRankWhere, groupBy, inOrder, startTime, endTime, req.GetPageMeta().GetPageSize(), req.GetPageMeta().GetPageNum())
+	if err != nil {
+		kelvins.ErrLogger.Errorf(ctx, "OrderShopRank err: %v where: %+v", err, orderRankWhere)
+		retCode = code.ErrorServer
+		return
+	}
+	if len(ranks) == 0 {
+		return
+	}
+	for _, v := range ranks {
+		e := &order_business.OrderShopRankEntry{
+			ShopId: v.ShopId,
+			Uid:    v.Uid,
+			Money:  v.SMoney,
+			Amount: int64(v.SAmount),
+		}
+		list = append(list, e)
+	}
+	return
+}
+
+func OrderSkuRank(ctx context.Context, req *order_business.OrderSkuRankRequest) (list []*order_business.OrderSkuRankEntry, retCode int) {
+	retCode = code.Success
+	list = make([]*order_business.OrderSkuRankEntry, 0)
+	sort.Sort((Int64Slice)(req.Option.ShopId))
+	sort.Strings(req.Option.SkuCode)
+	sort.Strings(req.Option.GoodsName)
+	shopIdKey := strings.Builder{}
+	for _, v := range req.Option.ShopId {
+		if v != 0 {
+			shopIdKey.WriteString(fmt.Sprintf("%v", v))
+		}
+	}
+	skuCodeKey := strings.Builder{}
+	for _, v := range req.Option.SkuCode {
+		if v != "" {
+			skuCodeKey.WriteString(fmt.Sprintf("%v", v))
+		}
+	}
+	goodsNameKey := strings.Builder{}
+	for _, v := range req.Option.GoodsName {
+		if v != "" {
+			goodsNameKey.WriteString(fmt.Sprintf("%v", v))
+		}
+	}
+	cacheKey := fmt.Sprintf("micro-mall-order:order-sku-rank:%v-%v-%v-%v-%v-%v-%v",
+		shopIdKey.String(), skuCodeKey.String(), goodsNameKey.String(), req.Option.StartTime, req.Option.EndTime, req.PageMeta.PageSize, req.PageMeta.PageNum)
+
+	if len(cacheKey) > 512 {
+		cacheKey = hash.MD5EncodeToString(cacheKey)
+	}
+	err := kelvins.G2CacheEngine.Get(cacheKey, 5, &list, func() (interface{}, error) {
+		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+		defer cancel()
+		result, ret := orderSkuRank(ctx, req)
+		if ret != code.Success {
+			return result, fmt.Errorf("%v", ret)
+		}
+		return result, nil
+	})
+	if err != nil {
+		retCode = code.ErrorServer
+		return nil, 0
+	}
+	return
+}
+
+const orderSkuRankSql = "sku_code,name,shop_id ,sum(amount) as s_amount"
+
+func orderSkuRank(ctx context.Context, req *order_business.OrderSkuRankRequest) (list []*order_business.OrderSkuRankEntry, retCode int) {
+	retCode = code.Success
+	orderRankWhere := map[string]interface{}{}
+	if len(req.GetOption().GetShopId()) > 0 {
+		orderRankWhere["shop_id"] = req.GetOption().GetShopId()
+	}
+	if len(req.GetOption().GetSkuCode()) > 0 {
+		orderRankWhere["sku_code"] = req.GetOption().GetSkuCode()
+	}
+	if len(req.GetOption().GetGoodsName()) > 0 {
+		orderRankWhere["name"] = req.GetOption().GetGoodsName()
+	}
+	inOrder := []string{"s_amount"}
+	groupBy := "shop_id,sku_code,name"
+	var err error
+	var startTime time.Time
+	var endTime time.Time
+	if req.GetOption() != nil && req.GetOption().GetStartTime() != "" {
+		startTime, err = util.GenTimeOfStr(req.GetOption().GetStartTime())
+		if err != nil {
+			retCode = code.InvalidParamTimeFormat
+			return
+		}
+		startTime = startTime.UTC()
+	}
+	if req.GetOption() != nil && req.GetOption().GetEndTime() != "" {
+		endTime, err = util.GenTimeOfStr(req.GetOption().GetEndTime())
+		if err != nil {
+			retCode = code.InvalidParamTimeFormat
+			return
+		}
+		endTime = endTime.UTC()
+	}
+
+	ranks, err := repository.OrderSkuRank(orderSkuRankSql, orderRankWhere, groupBy, inOrder, startTime, endTime, req.GetPageMeta().GetPageSize(), req.GetPageMeta().GetPageNum())
+	if err != nil {
+		kelvins.ErrLogger.Errorf(ctx, "OrderSkuRank err: %v, where: %+v", err, orderRankWhere)
+		retCode = code.ErrorServer
+		return
+	}
+	if len(ranks) == 0 {
+		return
+	}
+	for _, v := range ranks {
+		e := &order_business.OrderSkuRankEntry{
+			ShopId:    v.ShopId,
+			SkuCode:   v.SkuCode,
+			GoodsName: v.Name,
+			Amount:    int64(v.SAmount),
+		}
+		list = append(list, e)
+	}
 	return
 }

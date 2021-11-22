@@ -367,6 +367,79 @@
         ]
       }
     },
+    "/v1/order/shop/rank": {
+      "get": {
+        "summary": "订单店铺交易榜单",
+        "operationId": "OrderBusinessService_OrderShopRank",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/order_businessOrderShopRankResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "option.shop_id",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "option.uid",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "option.start_time",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "option.end_time",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_meta.page_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "page_meta.page_size",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "OrderBusinessService"
+        ]
+      }
+    },
     "/v1/order/sku": {
       "get": {
         "summary": "获取订单商品",
@@ -391,6 +464,88 @@
             "in": "query",
             "required": false,
             "type": "string"
+          }
+        ],
+        "tags": [
+          "OrderBusinessService"
+        ]
+      }
+    },
+    "/v1/order/sku/rank": {
+      "get": {
+        "summary": "订单商品交易榜单",
+        "operationId": "OrderBusinessService_OrderSkuRank",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/order_businessOrderSkuRankResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "option.shop_id",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "int64"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "option.sku_code",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "option.goods_name",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "option.start_time",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "option.end_time",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_meta.page_num",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "page_meta.page_size",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
           }
         ],
         "tags": [
@@ -751,6 +906,65 @@
       },
       "title": "同一个门店的商品"
     },
+    "order_businessOrderShopRankEntry": {
+      "type": "object",
+      "properties": {
+        "shop_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "uid": {
+          "type": "string",
+          "format": "int64"
+        },
+        "money": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "order_businessOrderShopRankOption": {
+      "type": "object",
+      "properties": {
+        "shop_id": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "uid": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "start_time": {
+          "type": "string"
+        },
+        "end_time": {
+          "type": "string"
+        }
+      }
+    },
+    "order_businessOrderShopRankResponse": {
+      "type": "object",
+      "properties": {
+        "common": {
+          "$ref": "#/definitions/order_businessCommonResponse"
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order_businessOrderShopRankEntry"
+          }
+        }
+      }
+    },
     "order_businessOrderSku": {
       "type": "object",
       "properties": {
@@ -761,6 +975,69 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/order_businessOrderGoods"
+          }
+        }
+      }
+    },
+    "order_businessOrderSkuRankEntry": {
+      "type": "object",
+      "properties": {
+        "shop_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "sku_code": {
+          "type": "string"
+        },
+        "goods_name": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "order_businessOrderSkuRankOption": {
+      "type": "object",
+      "properties": {
+        "shop_id": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "sku_code": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "goods_name": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "start_time": {
+          "type": "string"
+        },
+        "end_time": {
+          "type": "string"
+        }
+      }
+    },
+    "order_businessOrderSkuRankResponse": {
+      "type": "object",
+      "properties": {
+        "common": {
+          "$ref": "#/definitions/order_businessCommonResponse"
+        },
+        "list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/order_businessOrderSkuRankEntry"
           }
         }
       }
@@ -847,6 +1124,7 @@
         "SUCCESS",
         "ERROR",
         "ERR_REQUEST_DATA_FORMAT",
+        "INVALID_TIME_FORMAT",
         "USER_NOT_EXIST",
         "USER_EXIST",
         "MERCHANT_NOT_EXIST",

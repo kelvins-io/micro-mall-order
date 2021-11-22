@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+
 	"gitee.com/cristiane/micro-mall-order/pkg/code"
 	"gitee.com/cristiane/micro-mall-order/proto/micro_mall_order_proto/order_business"
 	"gitee.com/cristiane/micro-mall-order/service"
@@ -281,6 +282,50 @@ func (o *OrderServer) SearchTradeOrder(ctx context.Context, req *order_business.
 	list, retCode := service.SearchTradeOrder(ctx, req.GetQuery())
 	if retCode != code.Success {
 		result.Common.Code = order_business.RetCode_ERROR
+		return result, nil
+	}
+	result.List = list
+	return result, nil
+}
+
+func (o *OrderServer) OrderShopRank(ctx context.Context, req *order_business.OrderShopRankRequest) (*order_business.OrderShopRankResponse, error) {
+	result := &order_business.OrderShopRankResponse{
+		Common: &order_business.CommonResponse{
+			Code: order_business.RetCode_SUCCESS,
+		},
+	}
+	list, retCode := service.OrderShopRank(ctx, req)
+	if retCode != code.Success {
+		switch retCode {
+		case code.InvalidParam:
+			result.Common.Code = order_business.RetCode_ERR_REQUEST_DATA_FORMAT
+		case code.InvalidParamTimeFormat:
+			result.Common.Code = order_business.RetCode_INVALID_TIME_FORMAT
+		default:
+			result.Common.Code = order_business.RetCode_ERROR
+		}
+		return result, nil
+	}
+	result.List = list
+	return result, nil
+}
+
+func (o *OrderServer) OrderSkuRank(ctx context.Context, req *order_business.OrderSkuRankRequest) (*order_business.OrderSkuRankResponse, error) {
+	result := &order_business.OrderSkuRankResponse{
+		Common: &order_business.CommonResponse{
+			Code: order_business.RetCode_SUCCESS,
+		},
+	}
+	list, retCode := service.OrderSkuRank(ctx, req)
+	if retCode != code.Success {
+		switch retCode {
+		case code.InvalidParam:
+			result.Common.Code = order_business.RetCode_ERR_REQUEST_DATA_FORMAT
+		case code.InvalidParamTimeFormat:
+			result.Common.Code = order_business.RetCode_INVALID_TIME_FORMAT
+		default:
+			result.Common.Code = order_business.RetCode_ERROR
+		}
 		return result, nil
 	}
 	result.List = list

@@ -30,6 +30,13 @@ type Order struct {
 	InventoryVerify     int       `xorm:"default 0 comment('库存核实，0-未核实，1-核实') TINYINT"`
 }
 
+type OrderShopRank struct {
+	Uid     int64  `xorm:"not null comment('用户UID') index BIGINT"`
+	ShopId  int64  `xorm:"not null comment('门店ID') index BIGINT"`
+	SAmount int    `xorm:"comment('订单关联商品数量') INT"`
+	SMoney  string `xorm:"not null default 0.0000000000000000 comment('订单总金额') DECIMAL(32,16)"`
+}
+
 type OrderEstimate struct {
 	Id           int64     `xorm:"pk autoincr comment('自增ID') BIGINT"`
 	EstimateCode string    `xorm:"not null comment('评论code') unique(estimate_code_shop_id) CHAR(40)"`
@@ -53,6 +60,13 @@ type OrderSceneShop struct {
 	ShopAddress  string    `xorm:"comment('店铺地址') TEXT"`
 	CreateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('创建时间') DATETIME"`
 	UpdateTime   time.Time `xorm:"not null default CURRENT_TIMESTAMP comment('更新时间') DATETIME"`
+}
+
+type OrderSkuRank struct {
+	ShopId  int64  `xorm:"not null comment('店铺ID') unique(order_unique) index BIGINT"`
+	SkuCode string `xorm:"not null comment('商品sku') unique(order_unique) index CHAR(64)"`
+	Name    string `xorm:"comment('商品名称') index VARCHAR(255)"`
+	SAmount int    `xorm:"comment('订单关联商品数量') INT"`
 }
 
 type OrderSku struct {
