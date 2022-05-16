@@ -26,7 +26,15 @@ func SearchTradeOrder(ctx context.Context, query string) (result []*order_busine
 	err := kelvins.G2CacheEngine.Get(searchKey, 120, &result, func() (interface{}, error) {
 		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 		defer cancel()
-		list, ret := searchTradeOrder(ctx, query)
+		var list []*order_business.SearchTradeOrderInfo
+		var ret int
+		// 有一定概率失败
+		for i := 0; i < 3; i++ {
+			list, ret = searchTradeOrder(ctx, query)
+			if ret == code.Success {
+				break
+			}
+		}
 		if ret != code.Success {
 			return &list, fmt.Errorf("searchTradeOrder ret %v", ret)
 		}
