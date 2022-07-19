@@ -25,6 +25,9 @@ func SendEmailNotice(ctx context.Context, receivers, subject, msg string) error 
 	if vars.EmailConfigSetting == nil || !vars.EmailConfigSetting.Enable {
 		return nil
 	}
+	if receivers == "" {
+		return nil
+	}
 	one.Do(func() {
 		initVars()
 	})
